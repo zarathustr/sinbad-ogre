@@ -30,6 +30,11 @@ THE SOFTWARE.
 #include "OgreOptimisedUtil.h"
 #include "OgrePlatformInformation.h"
 
+#if defined(__aarch64__) && defined (__MACH__)
+#undef __OGRE_HAVE_SSE
+#undef __INTEL_COMPILER
+#endif
+
 #if __OGRE_HAVE_SSE
 
 #include "OgreMatrix4.h"

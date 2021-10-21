@@ -177,7 +177,7 @@ namespace Ogre {
             // Return values in eax, no return statement requirement here for VC.
         }
 	#endif
-#elif (OGRE_COMPILER == OGRE_COMPILER_GNUC || OGRE_COMPILER == OGRE_COMPILER_CLANG) && OGRE_PLATFORM != OGRE_PLATFORM_NACL
+#elif ((OGRE_COMPILER == OGRE_COMPILER_GNUC || OGRE_COMPILER == OGRE_COMPILER_CLANG) && OGRE_PLATFORM != OGRE_PLATFORM_NACL && !(defined(__aarch64__) && defined (__MACH__)))
         #if OGRE_ARCH_TYPE == OGRE_ARCHITECTURE_64
         __asm__
         (

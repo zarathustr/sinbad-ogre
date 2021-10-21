@@ -31,6 +31,11 @@ THE SOFTWARE.
 #include "OgrePrerequisites.h"
 #include "OgrePlatformInformation.h"
 
+#if defined(__aarch64__) && defined (__MACH__)
+#undef __OGRE_HAVE_SSE
+#undef __INTEL_COMPILER
+#endif
+
 // Stack-alignment hackery.
 //
 // If macro __OGRE_SIMD_ALIGN_STACK defined, means there requests
@@ -68,7 +73,7 @@ THE SOFTWARE.
 // NOTE: Should be sync with __OGRE_HAVE_SSE macro.
 //
 
-#if OGRE_DOUBLE_PRECISION == 0 && OGRE_CPU == OGRE_CPU_X86
+#if OGRE_DOUBLE_PRECISION == 0 && OGRE_CPU == OGRE_CPU_X86 && !(defined(__aarch64__) && defined (__MACH__))
 
 // GCC version 4.0 upwards should be reliable for official SSE now,
 // so no longer define SSE macros ourselves

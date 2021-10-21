@@ -126,6 +126,8 @@ if(WIN32)
 	macro_log_feature(DirectX11_FOUND "DirectX11" "Support for the DirectX11 render system" "http://msdn.microsoft.com/en-us/directx/" FALSE "" "")
 endif()
 
+findpkg_framework(AGL)
+
 #######################################################################
 # Additional features
 #######################################################################
