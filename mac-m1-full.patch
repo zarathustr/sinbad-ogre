@@ -1,0 +1,2350 @@
+diff --git a/CMake/Dependencies.cmake b/CMake/Dependencies.cmake
+index c5f8a0d..3dd0848 100755
+--- a/CMake/Dependencies.cmake
++++ b/CMake/Dependencies.cmake
+@@ -126,6 +126,8 @@ if(WIN32)
+ 	macro_log_feature(DirectX11_FOUND "DirectX11" "Support for the DirectX11 render system" "http://msdn.microsoft.com/en-us/directx/" FALSE "" "")
+ endif()
+ 
++findpkg_framework(AGL)
++
+ #######################################################################
+ # Additional features
+ #######################################################################
+diff --git a/CMake/Packages/FindOGRE.cmake b/CMake/Packages/FindOGRE.cmake
+index 9a82cfd..9e6a630 100644
+--- a/CMake/Packages/FindOGRE.cmake
++++ b/CMake/Packages/FindOGRE.cmake
+@@ -70,11 +70,11 @@ else ()
+   set(OGRE_LIB_SUFFIX "")
+ endif ()
+ 
+-if(APPLE AND NOT OGRE_STATIC)
+-	set(OGRE_LIBRARY_NAMES "Ogre${OGRE_LIB_SUFFIX}")
+-else()
++#if(APPLE AND NOT OGRE_STATIC)
++#	set(OGRE_LIBRARY_NAMES "Ogre${OGRE_LIB_SUFFIX}")
++#else()
+     set(OGRE_LIBRARY_NAMES "OgreMain${OGRE_LIB_SUFFIX}")
+-endif()
++#endif()
+ get_debug_names(OGRE_LIBRARY_NAMES)
+           
+ # construct search paths from environmental hints and
+diff --git a/CMake/Packages/FindOGRE.cmake.orig b/CMake/Packages/FindOGRE.cmake.orig
+new file mode 100644
+index 0000000..9a82cfd
+--- /dev/null
++++ b/CMake/Packages/FindOGRE.cmake.orig
+@@ -0,0 +1,588 @@
++#-------------------------------------------------------------------
++# This file is part of the CMake build system for OGRE
++#     (Object-oriented Graphics Rendering Engine)
++# For the latest info, see http://www.ogre3d.org/
++#
++# The contents of this file are placed in the public domain. Feel
++# free to make use of it in any way you like.
++#-------------------------------------------------------------------
++
++# - Try to find OGRE
++# If you have multiple versions of Ogre installed, use the CMake or
++# the environment variable OGRE_HOME to point to the path where the
++# desired Ogre version can be found.
++# By default this script will look for a dynamic Ogre build. If you
++# need to link against static Ogre libraries, set the CMake variable
++# OGRE_STATIC to TRUE.
++#
++# Once done, this will define
++#
++#  OGRE_FOUND - system has OGRE
++#  OGRE_INCLUDE_DIRS - the OGRE include directories 
++#  OGRE_LIBRARIES - link these to use the OGRE core
++#  OGRE_BINARY_REL - location of the main Ogre binary (win32 non-static only, release)
++#  OGRE_BINARY_DBG - location of the main Ogre binaries (win32 non-static only, debug)
++#
++# Additionally this script searches for the following optional
++# parts of the Ogre package:
++#  Plugin_BSPSceneManager, Plugin_CgProgramManager,
++#  Plugin_OctreeSceneManager, Plugin_OctreeZone,
++#  Plugin_ParticleFX, Plugin_PCZSceneManager,
++#  RenderSystem_GL, RenderSystem_GL3Plus,
++#  RenderSystem_GLES, RenderSystem_GLES2,
++#  RenderSystem_Direct3D9, RenderSystem_Direct3D11
++#  Paging, Terrain, Volume, Overlay
++#
++# For each of these components, the following variables are defined:
++#
++#  OGRE_${COMPONENT}_FOUND - ${COMPONENT} is available
++#  OGRE_${COMPONENT}_INCLUDE_DIRS - additional include directories for ${COMPONENT}
++#  OGRE_${COMPONENT}_LIBRARIES - link these to use ${COMPONENT} 
++#  OGRE_${COMPONENT}_BINARY_REL - location of the component binary (win32 non-static only, release)
++#  OGRE_${COMPONENT}_BINARY_DBG - location of the component binary (win32 non-static only, debug)
++#
++# Finally, the following variables are defined:
++#
++#  OGRE_PLUGIN_DIR_REL - The directory where the release versions of
++#       the OGRE plugins are located
++#  OGRE_PLUGIN_DIR_DBG - The directory where the debug versions of
++#       the OGRE plugins are located
++#  OGRE_MEDIA_DIR - The directory where the OGRE sample media is
++#       located, if available
++
++include(FindPkgMacros)
++include(PreprocessorUtils)
++findpkg_begin(OGRE)
++
++
++# Get path, convert backslashes as ${ENV_${var}}
++getenv_path(OGRE_HOME)
++getenv_path(OGRE_SDK)
++getenv_path(OGRE_SOURCE)
++getenv_path(OGRE_BUILD)
++getenv_path(OGRE_DEPENDENCIES_DIR)
++getenv_path(PROGRAMFILES)
++
++# Determine whether to search for a dynamic or static build
++if (OGRE_STATIC)
++  set(OGRE_LIB_SUFFIX "Static")
++else ()
++  set(OGRE_LIB_SUFFIX "")
++endif ()
++
++if(APPLE AND NOT OGRE_STATIC)
++	set(OGRE_LIBRARY_NAMES "Ogre${OGRE_LIB_SUFFIX}")
++else()
++    set(OGRE_LIBRARY_NAMES "OgreMain${OGRE_LIB_SUFFIX}")
++endif()
++get_debug_names(OGRE_LIBRARY_NAMES)
++          
++# construct search paths from environmental hints and
++# OS specific guesses
++if (WIN32)
++  set(OGRE_PREFIX_GUESSES
++    ${ENV_PROGRAMFILES}/OGRE
++    C:/OgreSDK
++  )
++elseif (UNIX)
++  set(OGRE_PREFIX_GUESSES
++    /opt/ogre
++    /opt/OGRE
++    /usr/lib${LIB_SUFFIX}/ogre
++    /usr/lib${LIB_SUFFIX}/OGRE
++    /usr/local/lib${LIB_SUFFIX}/ogre
++    /usr/local/lib${LIB_SUFFIX}/OGRE
++    $ENV{HOME}/ogre
++    $ENV{HOME}/OGRE
++  )
++  if (APPLE)
++    set(OGRE_PREFIX_GUESSES 
++      ${CMAKE_CURRENT_SOURCE_DIR}/lib/macosx
++      ${OGRE_PREFIX_GUESSES}
++    )
++  endif ()
++endif ()
++set(OGRE_PREFIX_PATH
++  ${OGRE_HOME} ${OGRE_SDK} ${ENV_OGRE_HOME} ${ENV_OGRE_SDK}
++  ${OGRE_PREFIX_GUESSES}
++)
++create_search_paths(OGRE)
++# If both OGRE_BUILD and OGRE_SOURCE are set, prepare to find Ogre in a build dir
++set(OGRE_PREFIX_SOURCE ${OGRE_SOURCE} ${ENV_OGRE_SOURCE})
++set(OGRE_PREFIX_BUILD ${OGRE_BUILD} ${ENV_OGRE_BUILD})
++set(OGRE_PREFIX_DEPENDENCIES_DIR ${OGRE_DEPENDENCIES_DIR} ${ENV_OGRE_DEPENDENCIES_DIR})
++if (OGRE_PREFIX_SOURCE AND OGRE_PREFIX_BUILD)
++  foreach(dir ${OGRE_PREFIX_SOURCE})
++    set(OGRE_INC_SEARCH_PATH ${dir}/OgreMain/include ${dir}/Dependencies/include ${dir}/iOSDependencies/include ${dir}/AndroidDependencies/include ${OGRE_INC_SEARCH_PATH})
++    set(OGRE_LIB_SEARCH_PATH ${dir}/lib ${dir}/Dependencies/lib ${dir}/iOSDependencies/lib ${dir}/AndroidDependencies/lib/${ANDROID_ABI} ${OGRE_LIB_SEARCH_PATH})
++    set(OGRE_BIN_SEARCH_PATH ${dir}/Samples/Common/bin ${OGRE_BIN_SEARCH_PATH})
++  endforeach(dir)
++  foreach(dir ${OGRE_PREFIX_BUILD})
++    set(OGRE_INC_SEARCH_PATH ${dir}/include ${OGRE_INC_SEARCH_PATH})
++    if(APPLE AND NOT OGRE_BUILD_PLATFORM_APPLE_IOS)
++        set(OGRE_LIB_SEARCH_PATH ${dir}/lib/macosx ${OGRE_LIB_SEARCH_PATH})
++    else()
++        set(OGRE_LIB_SEARCH_PATH ${dir}/lib ${OGRE_LIB_SEARCH_PATH})
++    endif()
++
++    if (OGRE_BUILD_PLATFORM_APPLE_IOS)
++        set(OGRE_LIB_SEARCH_PATH ${dir}/lib/iphoneos ${dir}/lib/iphonesimulator ${OGRE_LIB_SEARCH_PATH})
++    endif()
++
++    set(OGRE_BIN_SEARCH_PATH ${dir}/bin ${OGRE_BIN_SEARCH_PATH})
++    set(OGRE_BIN_SEARCH_PATH ${dir}/Samples/Common/bin ${OGRE_BIN_SEARCH_PATH})
++
++    if(APPLE AND NOT OGRE_BUILD_PLATFORM_APPLE_IOS)
++      set(OGRE_BIN_SEARCH_PATH ${dir}/bin/macosx ${OGRE_BIN_SEARCH_PATH})
++    endif()
++  endforeach(dir)
++  
++  if (OGRE_PREFIX_DEPENDENCIES_DIR)
++    set(OGRE_INC_SEARCH_PATH ${OGRE_PREFIX_DEPENDENCIES_DIR}/include ${OGRE_INC_SEARCH_PATH})
++    set(OGRE_LIB_SEARCH_PATH ${OGRE_PREFIX_DEPENDENCIES_DIR}/lib ${OGRE_LIB_SEARCH_PATH})
++    set(OGRE_BIN_SEARCH_PATH ${OGRE_PREFIX_DEPENDENCIES_DIR}/bin ${OGRE_BIN_SEARCH_PATH})
++  endif()
++else()
++  set(OGRE_PREFIX_SOURCE "NOTFOUND")
++  set(OGRE_PREFIX_BUILD "NOTFOUND")
++endif ()
++
++# redo search if any of the environmental hints changed
++set(OGRE_COMPONENTS Paging Terrain Volume Overlay 
++  Plugin_BSPSceneManager Plugin_CgProgramManager Plugin_OctreeSceneManager
++  Plugin_OctreeZone Plugin_PCZSceneManager Plugin_ParticleFX
++  RenderSystem_Direct3D11 RenderSystem_Direct3D9 RenderSystem_GL RenderSystem_GL3Plus RenderSystem_GLES RenderSystem_GLES2)
++set(OGRE_RESET_VARS 
++  OGRE_CONFIG_INCLUDE_DIR OGRE_INCLUDE_DIR 
++  OGRE_FRAMEWORK_INCLUDES OGRE_FRAMEWORK_PATH OGRE_LIBRARY_FWK OGRE_LIBRARY_REL OGRE_LIBRARY_DBG
++  OGRE_PLUGIN_DIR_DBG OGRE_PLUGIN_DIR_REL OGRE_MEDIA_DIR)
++foreach (comp ${OGRE_COMPONENTS})
++  set(OGRE_RESET_VARS ${OGRE_RESET_VARS}
++    OGRE_${comp}_INCLUDE_DIR OGRE_${comp}_LIBRARY_FWK
++    OGRE_${comp}_LIBRARY_DBG OGRE_${comp}_LIBRARY_REL
++  )
++endforeach (comp)
++set(OGRE_PREFIX_WATCH ${OGRE_PREFIX_PATH} ${OGRE_PREFIX_SOURCE} ${OGRE_PREFIX_BUILD})
++clear_if_changed(OGRE_PREFIX_WATCH ${OGRE_RESET_VARS})
++
++if(NOT OGRE_STATIC)
++	# try to locate Ogre via pkg-config
++	use_pkgconfig(OGRE_PKGC "OGRE${OGRE_LIB_SUFFIX}")
++
++	# Set the framework search path for OS X
++    set(OGRE_FRAMEWORK_SEARCH_PATH
++      ${CMAKE_FRAMEWORK_PATH}
++      ~/Library/Frameworks
++      /Library/Frameworks
++      /System/Library/Frameworks
++      /Network/Library/Frameworks
++      ${CMAKE_CURRENT_SOURCE_DIR}/lib/macosx/Release
++      ${CMAKE_CURRENT_SOURCE_DIR}/lib/macosx/Debug
++    )
++else()
++	set(OGRE_LIBRARY_FWK "")
++endif()
++
++# locate Ogre include files
++find_path(OGRE_CONFIG_INCLUDE_DIR NAMES OgreBuildSettings.h HINTS ${OGRE_INC_SEARCH_PATH} ${OGRE_FRAMEWORK_INCLUDES} ${OGRE_PKGC_INCLUDE_DIRS} PATH_SUFFIXES "OGRE")
++find_path(OGRE_INCLUDE_DIR NAMES OgreRoot.h HINTS ${OGRE_CONFIG_INCLUDE_DIR} ${OGRE_INC_SEARCH_PATH} ${OGRE_FRAMEWORK_INCLUDES} ${OGRE_PKGC_INCLUDE_DIRS} PATH_SUFFIXES "OGRE")
++set(OGRE_INCOMPATIBLE FALSE)
++
++if (OGRE_INCLUDE_DIR)
++  if (NOT OGRE_CONFIG_INCLUDE_DIR)
++    set(OGRE_CONFIG_INCLUDE_DIR ${OGRE_INCLUDE_DIR})
++  endif ()
++  # determine Ogre version
++  file(READ ${OGRE_INCLUDE_DIR}/OgrePrerequisites.h OGRE_TEMP_VERSION_CONTENT)
++  get_preprocessor_entry(OGRE_TEMP_VERSION_CONTENT OGRE_VERSION_MAJOR OGRE_VERSION_MAJOR)
++  get_preprocessor_entry(OGRE_TEMP_VERSION_CONTENT OGRE_VERSION_MINOR OGRE_VERSION_MINOR)
++  get_preprocessor_entry(OGRE_TEMP_VERSION_CONTENT OGRE_VERSION_PATCH OGRE_VERSION_PATCH)
++  get_preprocessor_entry(OGRE_TEMP_VERSION_CONTENT OGRE_VERSION_NAME OGRE_VERSION_NAME)
++  set(OGRE_VERSION "${OGRE_VERSION_MAJOR}.${OGRE_VERSION_MINOR}.${OGRE_VERSION_PATCH}")
++  pkg_message(OGRE "Found Ogre ${OGRE_VERSION_NAME} (${OGRE_VERSION})")
++
++  # determine configuration settings
++  set(OGRE_CONFIG_HEADERS
++    ${OGRE_CONFIG_INCLUDE_DIR}/OgreBuildSettings.h
++    ${OGRE_CONFIG_INCLUDE_DIR}/OgreConfig.h
++  )
++  foreach(CFG_FILE ${OGRE_CONFIG_HEADERS})
++    if (EXISTS ${CFG_FILE})
++      set(OGRE_CONFIG_HEADER ${CFG_FILE})
++      break()
++    endif()
++  endforeach()
++  if (OGRE_CONFIG_HEADER)
++    file(READ ${OGRE_CONFIG_HEADER} OGRE_TEMP_CONFIG_CONTENT)
++    has_preprocessor_entry(OGRE_TEMP_CONFIG_CONTENT OGRE_STATIC_LIB OGRE_CONFIG_STATIC)
++    get_preprocessor_entry(OGRE_TEMP_CONFIG_CONTENT OGRE_THREAD_SUPPORT OGRE_CONFIG_THREADS)
++    get_preprocessor_entry(OGRE_TEMP_CONFIG_CONTENT OGRE_THREAD_PROVIDER OGRE_CONFIG_THREAD_PROVIDER)
++    get_preprocessor_entry(OGRE_TEMP_CONFIG_CONTENT OGRE_NO_FREEIMAGE OGRE_CONFIG_FREEIMAGE)
++    if (OGRE_CONFIG_STATIC AND OGRE_STATIC)
++    elseif (OGRE_CONFIG_STATIC OR OGRE_STATIC)
++      pkg_message(OGRE "Build type (static, dynamic) does not match the requested one.")
++      set(OGRE_INCOMPATIBLE TRUE)
++    endif ()
++  else ()
++    pkg_message(OGRE "Could not determine Ogre build configuration.")
++    set(OGRE_INCOMPATIBLE TRUE)
++  endif ()
++else ()
++  set(OGRE_INCOMPATIBLE FALSE)
++endif ()
++
++find_library(OGRE_LIBRARY_REL NAMES ${OGRE_LIBRARY_NAMES} HINTS ${OGRE_LIB_SEARCH_PATH} ${OGRE_PKGC_LIBRARY_DIRS} ${OGRE_FRAMEWORK_SEARCH_PATH} PATH_SUFFIXES "" "Release" "RelWithDebInfo" "MinSizeRel")
++find_library(OGRE_LIBRARY_DBG NAMES ${OGRE_LIBRARY_NAMES_DBG} HINTS ${OGRE_LIB_SEARCH_PATH} ${OGRE_PKGC_LIBRARY_DIRS} ${OGRE_FRAMEWORK_SEARCH_PATH} PATH_SUFFIXES "" "Debug")
++
++make_library_set(OGRE_LIBRARY)
++
++if (OGRE_INCOMPATIBLE)
++  set(OGRE_LIBRARY "NOTFOUND")
++endif ()
++
++if("${OGRE_FRAMEWORK_INCLUDES}" STREQUAL NOTFOUND)
++  unset(OGRE_FRAMEWORK_INCLUDES CACHE)
++endif()
++set(OGRE_INCLUDE_DIR ${OGRE_CONFIG_INCLUDE_DIR} ${OGRE_INCLUDE_DIR} ${OGRE_FRAMEWORK_INCLUDES})
++list(REMOVE_DUPLICATES OGRE_INCLUDE_DIR)
++findpkg_finish(OGRE)
++add_parent_dir(OGRE_INCLUDE_DIRS OGRE_INCLUDE_DIR)
++if (OGRE_SOURCE)
++	# If working from source rather than SDK, add samples include
++	set(OGRE_INCLUDE_DIRS ${OGRE_INCLUDE_DIRS} "${OGRE_SOURCE}/Samples/Common/include")
++endif()
++
++mark_as_advanced(OGRE_CONFIG_INCLUDE_DIR OGRE_MEDIA_DIR OGRE_PLUGIN_DIR_REL OGRE_PLUGIN_DIR_DBG)
++
++if (NOT OGRE_FOUND)
++  return()
++endif ()
++
++
++# look for required Ogre dependencies in case of static build and/or threading
++if (OGRE_STATIC)
++  set(OGRE_DEPS_FOUND TRUE)
++  find_package(Cg QUIET)
++  find_package(DirectX QUIET)
++  find_package(FreeImage QUIET)
++  find_package(Freetype QUIET)
++  find_package(OpenGL QUIET)
++  find_package(OpenGLES QUIET)
++  find_package(OpenGLES2 QUIET)
++  find_package(ZLIB QUIET)
++  find_package(ZZip QUIET)
++  if (UNIX AND NOT APPLE AND NOT ANDROID)
++    find_package(X11 QUIET)
++    find_library(XAW_LIBRARY NAMES Xaw Xaw7 PATHS ${DEP_LIB_SEARCH_DIR} ${X11_LIB_SEARCH_PATH})
++    if (NOT XAW_LIBRARY OR NOT X11_Xt_FOUND)
++      set(X11_FOUND FALSE)
++    endif ()
++  endif ()
++
++  set(OGRE_LIBRARIES ${OGRE_LIBRARIES} ${ZZip_LIBRARIES} ${ZLIB_LIBRARIES} ${FreeImage_LIBRARIES} ${FREETYPE_LIBRARIES})
++
++  if (APPLE AND NOT OGRE_BUILD_PLATFORM_APPLE_IOS AND NOT ANDROID)
++    set(OGRE_LIBRARIES ${OGRE_LIBRARIES} ${X11_LIBRARIES} ${X11_Xt_LIBRARIES} ${XAW_LIBRARY} ${X11_Xrandr_LIB} ${Carbon_LIBRARIES} ${Cocoa_LIBRARIES})
++  endif()
++  
++  if (NOT ZLIB_FOUND OR NOT ZZip_FOUND)
++    set(OGRE_DEPS_FOUND FALSE)
++  endif ()
++  if (NOT FreeImage_FOUND AND NOT OGRE_CONFIG_FREEIMAGE)
++    set(OGRE_DEPS_FOUND FALSE)
++  endif ()
++  if (NOT FREETYPE_FOUND)
++    set(OGRE_DEPS_FOUND FALSE)
++  endif ()
++  if (UNIX AND NOT APPLE AND NOT ANDROID)
++	if (NOT X11_FOUND)
++      set(OGRE_DEPS_FOUND FALSE)
++	endif ()
++  endif ()
++endif()
++  if (OGRE_CONFIG_THREADS)
++    if (OGRE_CONFIG_THREAD_PROVIDER EQUAL 1)
++      if (OGRE_STATIC)
++    	set(Boost_USE_STATIC_LIBS TRUE)
++    	if(OGRE_BUILD_PLATFORM_APPLE_IOS)
++          set(Boost_USE_MULTITHREADED OFF)
++        endif()
++      endif()
++      
++      set(OGRE_BOOST_COMPONENTS thread date_time)
++      find_package(Boost COMPONENTS ${OGRE_BOOST_COMPONENTS} QUIET)
++      if(Boost_FOUND AND Boost_VERSION GREATER 104900)
++        if(Boost_VERSION GREATER 105300)
++            set(OGRE_BOOST_COMPONENTS thread date_time system atomic chrono)
++        else()
++            set(OGRE_BOOST_COMPONENTS thread date_time system chrono)
++        endif()
++      endif()
++
++      find_package(Boost COMPONENTS ${OGRE_BOOST_COMPONENTS} QUIET)
++      if (NOT Boost_THREAD_FOUND)
++        set(OGRE_DEPS_FOUND FALSE)
++      else ()
++        set(OGRE_LIBRARIES ${OGRE_LIBRARIES} ${Boost_LIBRARIES})
++        set(OGRE_INCLUDE_DIRS ${OGRE_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
++      endif ()
++    elseif (OGRE_CONFIG_THREAD_PROVIDER EQUAL 2)
++      find_package(POCO QUIET)
++      if (NOT POCO_FOUND)
++        set(OGRE_DEPS_FOUND FALSE)
++      else ()
++        set(OGRE_LIBRARIES ${OGRE_LIBRARIES} ${POCO_LIBRARIES})
++        set(OGRE_INCLUDE_DIRS ${OGRE_INCLUDE_DIRS} ${POCO_INCLUDE_DIRS})
++      endif ()
++    elseif (OGRE_CONFIG_THREAD_PROVIDER EQUAL 3)
++      find_package(TBB QUIET)
++      if (NOT TBB_FOUND)
++        set(OGRE_DEPS_FOUND FALSE)
++      else ()
++        set(OGRE_LIBRARIES ${OGRE_LIBRARIES} ${TBB_LIBRARIES})
++        set(OGRE_INCLUDE_DIRS ${OGRE_INCLUDE_DIRS} ${TBB_INCLUDE_DIRS})
++      endif ()
++    endif ()
++  endif ()
++if (OGRE_STATIC)
++  if (NOT OGRE_DEPS_FOUND)
++    pkg_message(OGRE "Could not find all required dependencies for the Ogre package.")
++    set(OGRE_FOUND FALSE)
++  endif ()
++endif ()
++
++if (NOT OGRE_FOUND)
++  return()
++endif ()
++
++
++get_filename_component(OGRE_LIBRARY_DIR_REL "${OGRE_LIBRARY_REL}" PATH)
++get_filename_component(OGRE_LIBRARY_DIR_DBG "${OGRE_LIBRARY_DBG}" PATH)
++set(OGRE_LIBRARY_DIRS ${OGRE_LIBRARY_DIR_REL} ${OGRE_LIBRARY_DIR_DBG})
++
++# find binaries
++if (NOT OGRE_STATIC)
++	if (WIN32)
++		find_file(OGRE_BINARY_REL NAMES "OgreMain.dll" HINTS ${OGRE_BIN_SEARCH_PATH}
++          PATH_SUFFIXES "" Release RelWithDebInfo MinSizeRel)
++		find_file(OGRE_BINARY_DBG NAMES "OgreMain_d.dll" HINTS ${OGRE_BIN_SEARCH_PATH}
++          PATH_SUFFIXES "" Debug )
++	endif()
++	mark_as_advanced(OGRE_BINARY_REL OGRE_BINARY_DBG)
++endif()
++
++
++#########################################################
++# Find Ogre components
++#########################################################
++
++set(OGRE_COMPONENT_SEARCH_PATH_REL 
++  ${OGRE_LIBRARY_DIR_REL}/..
++  ${OGRE_LIBRARY_DIR_REL}/../..
++  ${OGRE_BIN_SEARCH_PATH}
++)
++set(OGRE_COMPONENT_SEARCH_PATH_DBG
++  ${OGRE_LIBRARY_DIR_DBG}/..
++  ${OGRE_LIBRARY_DIR_DBG}/../..
++  ${OGRE_BIN_SEARCH_PATH}
++)
++
++macro(ogre_find_component COMPONENT HEADER)
++  findpkg_begin(OGRE_${COMPONENT})
++  find_path(OGRE_${COMPONENT}_INCLUDE_DIR NAMES ${HEADER} HINTS ${OGRE_INCLUDE_DIRS} ${OGRE_PREFIX_SOURCE} PATH_SUFFIXES ${COMPONENT} OGRE/${COMPONENT} Components/${COMPONENT}/include)
++  set(OGRE_${COMPONENT}_LIBRARY_NAMES "Ogre${COMPONENT}${OGRE_LIB_SUFFIX}")
++  get_debug_names(OGRE_${COMPONENT}_LIBRARY_NAMES)
++  find_library(OGRE_${COMPONENT}_LIBRARY_REL NAMES ${OGRE_${COMPONENT}_LIBRARY_NAMES} HINTS ${OGRE_LIBRARY_DIR_REL} ${OGRE_FRAMEWORK_PATH} PATH_SUFFIXES "" "Release" "RelWithDebInfo" "MinSizeRel")
++  find_library(OGRE_${COMPONENT}_LIBRARY_DBG NAMES ${OGRE_${COMPONENT}_LIBRARY_NAMES_DBG} HINTS ${OGRE_LIBRARY_DIR_DBG} ${OGRE_FRAMEWORK_PATH} PATH_SUFFIXES "" "Debug")
++  make_library_set(OGRE_${COMPONENT}_LIBRARY)
++  findpkg_finish(OGRE_${COMPONENT})
++  if (OGRE_${COMPONENT}_FOUND)
++    # find binaries
++    if (NOT OGRE_STATIC)
++	  if (WIN32)
++	    find_file(OGRE_${COMPONENT}_BINARY_REL NAMES "Ogre${COMPONENT}.dll" HINTS ${OGRE_COMPONENT_SEARCH_PATH_REL} PATH_SUFFIXES "" bin bin/Release bin/RelWithDebInfo bin/MinSizeRel Release)
++	    find_file(OGRE_${COMPONENT}_BINARY_DBG NAMES "Ogre${COMPONENT}_d.dll" HINTS ${OGRE_COMPONENT_SEARCH_PATH_DBG} PATH_SUFFIXES "" bin bin/Debug Debug)
++	  endif()
++	  mark_as_advanced(OGRE_${COMPONENT}_BINARY_REL OGRE_${COMPONENT}_BINARY_DBG)
++    endif()
++  endif()
++endmacro()
++
++# look for Paging component
++ogre_find_component(Paging OgrePaging.h)
++# look for Terrain component
++ogre_find_component(Terrain OgreTerrain.h)
++# look for Property component
++ogre_find_component(Property OgreProperty.h)
++# look for RTShaderSystem component
++ogre_find_component(RTShaderSystem OgreRTShaderSystem.h)
++# look for Volume component
++ogre_find_component(Volume OgreVolumePrerequisites.h)
++# look for Overlay component
++ogre_find_component(Overlay OgreOverlaySystem.h)
++
++#########################################################
++# Find Ogre plugins
++#########################################################        
++macro(ogre_find_plugin PLUGIN HEADER)
++  # On Unix, the plugins might have no prefix
++  if (CMAKE_FIND_LIBRARY_PREFIXES)
++    set(TMP_CMAKE_LIB_PREFIX ${CMAKE_FIND_LIBRARY_PREFIXES})
++    set(CMAKE_FIND_LIBRARY_PREFIXES ${CMAKE_FIND_LIBRARY_PREFIXES} "")
++  endif()
++  
++  # strip RenderSystem_ or Plugin_ prefix from plugin name
++  string(REPLACE "RenderSystem_" "" PLUGIN_TEMP ${PLUGIN})
++  string(REPLACE "Plugin_" "" PLUGIN_NAME ${PLUGIN_TEMP})
++  
++  # header files for plugins are not usually needed, but find them anyway if they are present
++  set(OGRE_PLUGIN_PATH_SUFFIXES
++    PlugIns PlugIns/${PLUGIN_NAME} Plugins Plugins/${PLUGIN_NAME} ${PLUGIN} 
++    RenderSystems RenderSystems/${PLUGIN_NAME} ${ARGN})
++  find_path(OGRE_${PLUGIN}_INCLUDE_DIR NAMES ${HEADER} 
++    HINTS ${OGRE_INCLUDE_DIRS} ${OGRE_PREFIX_SOURCE}  
++    PATH_SUFFIXES ${OGRE_PLUGIN_PATH_SUFFIXES})
++  # find link libraries for plugins
++  set(OGRE_${PLUGIN}_LIBRARY_NAMES "${PLUGIN}${OGRE_LIB_SUFFIX}")
++  get_debug_names(OGRE_${PLUGIN}_LIBRARY_NAMES)
++  set(OGRE_${PLUGIN}_LIBRARY_FWK ${OGRE_LIBRARY_FWK})
++  find_library(OGRE_${PLUGIN}_LIBRARY_REL NAMES ${OGRE_${PLUGIN}_LIBRARY_NAMES}
++    HINTS "${OGRE_BUILD}/lib" ${OGRE_LIBRARY_DIRS} ${OGRE_FRAMEWORK_PATH} PATH_SUFFIXES "" OGRE opt Release Release/opt RelWithDebInfo RelWithDebInfo/opt MinSizeRel MinSizeRel/opt)
++  find_library(OGRE_${PLUGIN}_LIBRARY_DBG NAMES ${OGRE_${PLUGIN}_LIBRARY_NAMES_DBG}
++    HINTS "${OGRE_BUILD}/lib" ${OGRE_LIBRARY_DIRS} ${OGRE_FRAMEWORK_PATH} PATH_SUFFIXES "" OGRE opt Debug Debug/opt)
++  make_library_set(OGRE_${PLUGIN}_LIBRARY)
++
++  if (OGRE_${PLUGIN}_LIBRARY OR OGRE_${PLUGIN}_INCLUDE_DIR)
++    set(OGRE_${PLUGIN}_FOUND TRUE)
++    if (OGRE_${PLUGIN}_INCLUDE_DIR)
++      set(OGRE_${PLUGIN}_INCLUDE_DIRS ${OGRE_${PLUGIN}_INCLUDE_DIR})
++    endif()
++    set(OGRE_${PLUGIN}_LIBRARIES ${OGRE_${PLUGIN}_LIBRARY})
++  endif ()
++
++  mark_as_advanced(OGRE_${PLUGIN}_INCLUDE_DIR OGRE_${PLUGIN}_LIBRARY_REL OGRE_${PLUGIN}_LIBRARY_DBG OGRE_${PLUGIN}_LIBRARY_FWK)
++
++  # look for plugin dirs
++  if (OGRE_${PLUGIN}_FOUND)
++    if (NOT OGRE_PLUGIN_DIR_REL OR NOT OGRE_PLUGIN_DIR_DBG)
++      if (WIN32)
++        set(OGRE_PLUGIN_SEARCH_PATH_REL 
++          ${OGRE_LIBRARY_DIR_REL}/..
++          ${OGRE_LIBRARY_DIR_REL}/../..
++		  ${OGRE_BIN_SEARCH_PATH}
++        )
++        set(OGRE_PLUGIN_SEARCH_PATH_DBG
++          ${OGRE_LIBRARY_DIR_DBG}/..
++          ${OGRE_LIBRARY_DIR_DBG}/../..
++		  ${OGRE_BIN_SEARCH_PATH}
++        )
++        find_path(OGRE_PLUGIN_DIR_REL NAMES "${PLUGIN}.dll" HINTS ${OGRE_PLUGIN_SEARCH_PATH_REL}
++          PATH_SUFFIXES "" bin bin/Release bin/RelWithDebInfo bin/MinSizeRel Release)
++        find_path(OGRE_PLUGIN_DIR_DBG NAMES "${PLUGIN}_d.dll" HINTS ${OGRE_PLUGIN_SEARCH_PATH_DBG}
++          PATH_SUFFIXES "" bin bin/Debug Debug)
++      elseif (UNIX)
++        get_filename_component(OGRE_PLUGIN_DIR_TMP ${OGRE_${PLUGIN}_LIBRARY_REL} PATH)
++        set(OGRE_PLUGIN_DIR_REL ${OGRE_PLUGIN_DIR_TMP} CACHE STRING "Ogre plugin dir (release)" FORCE)
++	    get_filename_component(OGRE_PLUGIN_DIR_TMP ${OGRE_${PLUGIN}_LIBRARY_DBG} PATH)
++        set(OGRE_PLUGIN_DIR_DBG ${OGRE_PLUGIN_DIR_TMP} CACHE STRING "Ogre plugin dir (debug)" FORCE)  
++      endif ()
++    endif ()
++	
++	# find binaries
++	if (NOT OGRE_STATIC)
++		if (WIN32)
++			find_file(OGRE_${PLUGIN}_REL NAMES "${PLUGIN}.dll" HINTS ${OGRE_PLUGIN_DIR_REL})
++			find_file(OGRE_${PLUGIN}_DBG NAMES "${PLUGIN}_d.dll" HINTS ${OGRE_PLUGIN_DIR_DBG})
++		endif()
++		mark_as_advanced(OGRE_${PLUGIN}_REL OGRE_${PLUGIN}_DBG)
++	endif()
++	
++  endif ()
++
++  if (TMP_CMAKE_LIB_PREFIX)
++    set(CMAKE_FIND_LIBRARY_PREFIXES ${TMP_CMAKE_LIB_PREFIX})
++  endif ()
++endmacro(ogre_find_plugin)
++
++ogre_find_plugin(Plugin_PCZSceneManager OgrePCZSceneManager.h PCZ PlugIns/PCZSceneManager/include)
++ogre_find_plugin(Plugin_OctreeZone OgreOctreeZone.h PCZ PlugIns/OctreeZone/include)
++ogre_find_plugin(Plugin_BSPSceneManager OgreBspSceneManager.h PlugIns/BSPSceneManager/include)
++ogre_find_plugin(Plugin_CgProgramManager OgreCgProgram.h PlugIns/CgProgramManager/include)
++ogre_find_plugin(Plugin_OctreeSceneManager OgreOctreeSceneManager.h PlugIns/OctreeSceneManager/include)
++ogre_find_plugin(Plugin_ParticleFX OgreParticleFXPrerequisites.h PlugIns/ParticleFX/include)
++ogre_find_plugin(RenderSystem_GL OgreGLRenderSystem.h RenderSystems/GL/include)
++ogre_find_plugin(RenderSystem_GL3Plus OgreGL3PlusRenderSystem.h RenderSystems/GL3Plus/include)
++ogre_find_plugin(RenderSystem_GLES OgreGLESRenderSystem.h RenderSystems/GLES/include)
++ogre_find_plugin(RenderSystem_GLES2 OgreGLES2RenderSystem.h RenderSystems/GLES2/include)
++ogre_find_plugin(RenderSystem_Direct3D9 OgreD3D9RenderSystem.h RenderSystems/Direct3D9/include)
++ogre_find_plugin(RenderSystem_Direct3D11 OgreD3D11RenderSystem.h RenderSystems/Direct3D11/include)
++        
++if (OGRE_STATIC)
++  # check if dependencies for plugins are met
++  if (NOT DirectX_FOUND)
++    set(OGRE_RenderSystem_Direct3D9_FOUND FALSE)
++  endif ()
++  if (NOT DirectX_D3D11_FOUND)
++    set(OGRE_RenderSystem_Direct3D11_FOUND FALSE)
++  endif ()
++  if (NOT OPENGL_FOUND)
++    set(OGRE_RenderSystem_GL_FOUND FALSE)
++  endif ()
++  if (NOT OPENGL_FOUND)
++    set(OGRE_RenderSystem_GL3Plus_FOUND FALSE)
++  endif ()
++  if (NOT OPENGLES_FOUND)
++    set(OGRE_RenderSystem_GLES_FOUND FALSE)
++  endif ()
++  if (NOT OPENGLES2_FOUND)
++    set(OGRE_RenderSystem_GLES2_FOUND FALSE)
++  endif ()
++  if (NOT Cg_FOUND)
++    set(OGRE_Plugin_CgProgramManager_FOUND FALSE)
++  endif ()
++  
++  set(OGRE_RenderSystem_Direct3D9_LIBRARIES ${OGRE_RenderSystem_Direct3D9_LIBRARIES}
++    ${DirectX_LIBRARIES}
++  )
++
++  set(OGRE_RenderSystem_Direct3D11_LIBRARIES ${OGRE_RenderSystem_Direct3D11_LIBRARIES}
++    ${DirectX_D3D11_LIBRARIES}
++  )
++  set(OGRE_RenderSystem_GL_LIBRARIES ${OGRE_RenderSystem_GL_LIBRARIES}
++    ${OPENGL_LIBRARIES}
++  )
++  set(OGRE_RenderSystem_GL3Plus_LIBRARIES ${OGRE_RenderSystem_GL3Plus_LIBRARIES}
++    ${OPENGL_LIBRARIES}
++  )
++  set(OGRE_RenderSystem_GLES_LIBRARIES ${OGRE_RenderSystem_GLES_LIBRARIES}
++    ${OPENGLES_LIBRARIES}
++  )
++  set(OGRE_RenderSystem_GLES2_LIBRARIES ${OGRE_RenderSystem_GLES2_LIBRARIES}
++    ${OPENGLES2_LIBRARIES}
++  )
++  set(OGRE_Plugin_CgProgramManager_LIBRARIES ${OGRE_Plugin_CgProgramManager_LIBRARIES}
++    ${Cg_LIBRARIES}
++  )
++endif ()
++
++# look for the media directory
++set(OGRE_MEDIA_SEARCH_PATH
++  ${OGRE_SOURCE}
++  ${OGRE_LIBRARY_DIR_REL}/..
++  ${OGRE_LIBRARY_DIR_DBG}/..
++  ${OGRE_LIBRARY_DIR_REL}/../..
++  ${OGRE_LIBRARY_DIR_DBG}/../..
++  ${OGRE_PREFIX_SOURCE}
++)
++set(OGRE_MEDIA_SEARCH_SUFFIX
++  Samples/Media
++  Media
++  media
++  share/OGRE/media
++  share/OGRE/Media
++)
++
++clear_if_changed(OGRE_PREFIX_WATCH OGRE_MEDIA_DIR)
++find_path(OGRE_MEDIA_DIR NAMES packs/cubemapsJS.zip HINTS ${OGRE_MEDIA_SEARCH_PATH}
++  PATHS ${OGRE_PREFIX_PATH} PATH_SUFFIXES ${OGRE_MEDIA_SEARCH_SUFFIX})
++
+diff --git a/CMake/Utils/OgreConfigTargets.cmake b/CMake/Utils/OgreConfigTargets.cmake
+index e77f903..f894e5a 100644
+--- a/CMake/Utils/OgreConfigTargets.cmake
++++ b/CMake/Utils/OgreConfigTargets.cmake
+@@ -71,7 +71,7 @@ elseif (UNIX)
+     set(OGRE_LIB_RELEASE_PATH "/Release")
+   endif(APPLE AND OGRE_BUILD_PLATFORM_APPLE_IOS)
+   if (APPLE)
+-    set(OGRE_PLUGIN_PATH "/")
++    set(OGRE_PLUGIN_PATH "/OGRE")
+   else()
+     set(OGRE_PLUGIN_PATH "/OGRE")
+   endif(APPLE)
+@@ -103,11 +103,11 @@ function(ogre_install_target TARGETNAME SUFFIX EXPORT)
+ 
+ 	if(EXPORT)
+ 	  install(TARGETS ${TARGETNAME} #EXPORT Ogre-exports
+-		BUNDLE DESTINATION "bin${OGRE_RELEASE_PATH}" CONFIGURATIONS Release None ""
+-		RUNTIME DESTINATION "bin${OGRE_RELEASE_PATH}" CONFIGURATIONS Release None ""
++		BUNDLE DESTINATION "bin" CONFIGURATIONS Release None ""
++		RUNTIME DESTINATION "bin" CONFIGURATIONS Release None ""
+ 		LIBRARY DESTINATION "${OGRE_LIB_DIRECTORY}${OGRE_LIB_RELEASE_PATH}${SUFFIX}" CONFIGURATIONS Release None ""
+ 		ARCHIVE DESTINATION "${OGRE_LIB_DIRECTORY}${OGRE_LIB_RELEASE_PATH}${SUFFIX}" CONFIGURATIONS Release None ""
+-		FRAMEWORK DESTINATION "${OGRE_LIB_DIRECTORY}${OGRE_RELEASE_PATH}/Release" CONFIGURATIONS Release None ""
++		FRAMEWORK DESTINATION "Frameworks" CONFIGURATIONS Release None ""
+       )
+ 	  install(TARGETS ${TARGETNAME} #EXPORT Ogre-exports
+ 		BUNDLE DESTINATION "bin${OGRE_RELWDBG_PATH}" CONFIGURATIONS RelWithDebInfo
+@@ -133,11 +133,11 @@ function(ogre_install_target TARGETNAME SUFFIX EXPORT)
+ 	  #install(EXPORT Ogre-exports DESTINATION ${OGRE_LIB_DIRECTORY})
+ 	else()
+ 	  install(TARGETS ${TARGETNAME}
+-		BUNDLE DESTINATION "bin${OGRE_RELEASE_PATH}" CONFIGURATIONS Release None ""
+-		RUNTIME DESTINATION "bin${OGRE_RELEASE_PATH}" CONFIGURATIONS Release None ""
++		BUNDLE DESTINATION "bin" CONFIGURATIONS Release None ""
++		RUNTIME DESTINATION "bin" CONFIGURATIONS Release None ""
+ 		LIBRARY DESTINATION "${OGRE_LIB_DIRECTORY}${OGRE_LIB_RELEASE_PATH}${SUFFIX}" CONFIGURATIONS Release None ""
+ 		ARCHIVE DESTINATION "${OGRE_LIB_DIRECTORY}${OGRE_LIB_RELEASE_PATH}${SUFFIX}" CONFIGURATIONS Release None ""
+-		FRAMEWORK DESTINATION "${OGRE_LIB_DIRECTORY}${OGRE_RELEASE_PATH}/Release" CONFIGURATIONS Release None ""
++		FRAMEWORK DESTINATION "Frameworks" CONFIGURATIONS Release None ""
+       )
+ 	  install(TARGETS ${TARGETNAME}
+ 		BUNDLE DESTINATION "bin${OGRE_RELWDBG_PATH}" CONFIGURATIONS RelWithDebInfo
+@@ -251,7 +251,7 @@ function(ogre_config_component LIBNAME)
+ endfunction(ogre_config_component)
+ 
+ function(ogre_config_framework LIBNAME)
+-  if (APPLE AND NOT OGRE_BUILD_PLATFORM_APPLE_IOS)
++  if (OGRE_BUILD_LIBS_AS_FRAMEWORKS)
+       set_target_properties(${LIBNAME} PROPERTIES FRAMEWORK TRUE)
+ 
+       # Set the INSTALL_PATH so that frameworks can be installed in the application package
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 073a48d..8413428 100755
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -33,13 +33,18 @@ if(WIN32)
+ endif()
+ 
+ if (APPLE)
+-  include(CMakeForceCompiler)
+-  CMAKE_FORCE_C_COMPILER(clang GNU)
+-  CMAKE_FORCE_CXX_COMPILER(clang++ GNU)
++  if(CMAKE_VERSION VERSION_LESS 3.0.0)
++    include(CMakeForceCompiler)
++    CMAKE_FORCE_C_COMPILER(clang GNU)
++    CMAKE_FORCE_CXX_COMPILER(clang++ GNU)
++  endif()
+   SET(CMAKE_SIZEOF_VOID_P 4)
+   set(CMAKE_XCODE_ATTRIBUTE_GCC_VERSION "com.apple.compilers.llvm.clang.1_0")
+   set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD "c++11")
+   set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libc++")
++  
++  # otherwise apple defines a macro named check that conflicts with boost
++  add_definitions(-D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=0)
+ endif ()
+ 
+ 
+@@ -260,7 +265,7 @@ if (OGRE_BUILD_PLATFORM_APPLE_IOS)
+   add_definitions(-mno-thumb)
+ 
+   set(CMAKE_OSX_ARCHITECTURES "$(ARCHS_STANDARD_INCLUDING_64_BIT)")
+-  string (REPLACE "-msse" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
++  string (REPLACE "-msse" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+ elseif (ANDROID)
+   set(TargetPlatform "Android")
+   set(OGRE_PLATFORM OGRE_PLATFORM_ANDROID)
+@@ -326,6 +331,7 @@ elseif (APPLE AND NOT OGRE_BUILD_PLATFORM_APPLE_IOS)
+ 
+   # 10.7 is the minimum for libc++ support
+   set(CMAKE_OSX_DEPLOYMENT_TARGET 10.7)
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+ 
+   # Make sure that the OpenGL render system is selected for non-iOS Apple builds
+   set(OGRE_BUILD_RENDERSYSTEM_GLES FALSE)
+@@ -385,6 +391,7 @@ cmake_dependent_option(OGRE_BUILD_TOOLS "Build the command-line tools" TRUE "NOT
+ cmake_dependent_option(OGRE_BUILD_XSIEXPORTER "Build the Softimage exporter" FALSE "Softimage_FOUND" FALSE)
+ option(OGRE_BUILD_TESTS "Build the unit tests & PlayPen" FALSE)
+ option(OGRE_CONFIG_DOUBLE "Use doubles instead of floats in Ogre" FALSE)
++cmake_dependent_option(OGRE_BUILD_LIBS_AS_FRAMEWORKS "Build frameworks for libraries on OS X." TRUE "APPLE;NOT OGRE_BUILD_PLATFORM_APPLE_IOS" FALSE)
+ 
+ if (OGRE_BUILD_PLATFORM_WINRT)
+ # WinRT can only use the standard allocator
+@@ -510,7 +517,9 @@ if (OGRE_BUILD_TESTS)
+ endif ()
+ 
+ # Setup samples
+-add_subdirectory(Samples)
++if (OGRE_BUILD_SAMPLES)
++  add_subdirectory(Samples)
++endif()
+ 
+ # Add android JNI binding
+ if(ANDROID)
+diff --git a/CMakeLists.txt.orig b/CMakeLists.txt.orig
+new file mode 100755
+index 0000000..fdb5d80
+--- /dev/null
++++ b/CMakeLists.txt.orig
+@@ -0,0 +1,554 @@
++#-------------------------------------------------------------------
++# This file is part of the CMake build system for OGRE
++#     (Object-oriented Graphics Rendering Engine)
++# For the latest info, see http://www.ogre3d.org/
++#
++# The contents of this file are placed in the public domain. Feel
++# free to make use of it in any way you like.
++#-------------------------------------------------------------------
++
++######################################################################
++# OGRE BUILD SYSTEM
++# Welcome to the CMake build system for OGRE.
++# This is the main file where we prepare the general build environment
++# and provide build configuration options.
++######################################################################
++
++cmake_minimum_required(VERSION 2.6.2)
++set(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS TRUE)
++cmake_policy(SET CMP0003 NEW)
++
++# CMake 2.8.2 has a bug that creates unusable Xcode projects when using ARCHS_STANDARD_32_BIT
++# to specify both armv6 and armv7.
++if(OGRE_BUILD_PLATFORM_APPLE_IOS AND (CMAKE_VERSION VERSION_EQUAL 2.8.2) AND (CMAKE_GENERATOR STREQUAL "Xcode"))
++	message(FATAL_ERROR "CMake 2.8.2 cannot create compatible Xcode projects for iOS, please download the latest version or an older release from http://www.cmake.org/files/")
++endif()
++
++# Use relative paths
++# This is mostly to reduce path size for command-line limits on windows
++if(WIN32)
++  # This seems to break Xcode projects so definitely don't enable on Apple builds
++  set(CMAKE_USE_RELATIVE_PATHS true)
++  set(CMAKE_SUPPRESS_REGENERATION true)
++endif()
++
++if (APPLE)
++  include(CMakeForceCompiler)
++  CMAKE_FORCE_C_COMPILER(clang GNU)
++  CMAKE_FORCE_CXX_COMPILER(clang++ GNU)
++  SET(CMAKE_SIZEOF_VOID_P 4)
++  set(CMAKE_XCODE_ATTRIBUTE_GCC_VERSION "com.apple.compilers.llvm.clang.1_0")
++  set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD "c++11")
++  set(CMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY "libc++")
++  
++  # otherwise apple defines a macro named check that conflicts with boost
++  add_definitions(-D__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=0)
++endif ()
++
++
++project(OGRE)
++
++# Include necessary submodules
++set(CMAKE_MODULE_PATH
++  "${OGRE_SOURCE_DIR}/CMake"
++  "${OGRE_SOURCE_DIR}/CMake/Utils"
++  "${OGRE_SOURCE_DIR}/CMake/Packages"
++)
++
++include(CMakeDependentOption)
++include(CheckCXXCompilerFlag)
++include(MacroLogFeature)
++include(OgreAddTargets)
++include(OgreConfigTargets)
++include(PreprocessorUtils)
++set(OGRE_TEMPLATES_DIR "${OGRE_SOURCE_DIR}/CMake/Templates")
++set(OGRE_WORK_DIR ${OGRE_BINARY_DIR})
++
++
++#####################################################################
++# Set up the basic build environment
++#####################################################################
++
++if (CMAKE_BUILD_TYPE STREQUAL "")
++  # CMake defaults to leaving CMAKE_BUILD_TYPE empty. This screws up
++  # differentiation between debug and release builds.
++  set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Choose the type of build, options are: None (CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel." FORCE)
++endif ()
++
++# determine Ogre version numbers
++include(OgreGetVersion)
++ogre_get_version(${OGRE_SOURCE_DIR}/OgreMain/include/OgrePrerequisites.h)
++message(STATUS "Configuring OGRE ${OGRE_VERSION}")
++# Configure version file for use by scripts
++configure_file("${OGRE_TEMPLATES_DIR}/version.txt.in" "${OGRE_BINARY_DIR}/version.txt" @ONLY)
++
++# determine if we are compiling for a 32bit or 64bit system
++include(CheckTypeSize)
++CHECK_TYPE_SIZE("void*" OGRE_PTR_SIZE BUILTIN_TYPES_ONLY)
++if (OGRE_PTR_SIZE EQUAL 8)
++  set(OGRE_PLATFORM_X64 TRUE)
++else ()
++  set(OGRE_PLATFORM_X64 FALSE)
++endif ()
++
++if (NOT APPLE)
++  # Create debug libraries with _d postfix
++  set(CMAKE_DEBUG_POSTFIX "_d")
++endif ()
++
++# Set compiler specific build flags
++if (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_CLANGXX)
++  check_cxx_compiler_flag(-msse OGRE_GCC_HAS_SSE)
++  if (OGRE_GCC_HAS_SSE)
++    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse")
++  endif ()
++  # This is a set of sensible warnings that provide meaningful output
++  set(OGRE_WARNING_FLAGS "-Wall -Winit-self -Wno-overloaded-virtual -Wcast-qual -Wwrite-strings -Wextra -Wno-unused-parameter -Wshadow -Wno-missing-field-initializers -Wno-long-long")
++  if (NOT APPLE)
++      set(OGRE_WARNING_FLAGS "${OGRE_WARNING_FLAGS} -Wno-unused-but-set-parameter")
++  endif ()
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OGRE_WARNING_FLAGS}")
++endif ()
++if (MSVC)
++  if (CMAKE_BUILD_TOOL STREQUAL "nmake")
++    # set variable to state that we are using nmake makefiles
++	set(NMAKE TRUE)
++  endif ()
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:fast")
++  # Enable intrinsics on MSVC in debug mode
++  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Oi")
++  if (CMAKE_CL_64)
++    # Visual Studio bails out on debug builds in 64bit mode unless
++	# this flag is set...
++	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /bigobj")
++	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /bigobj")
++  endif ()
++  if (OGRE_UNITY_BUILD)
++    # object files can get large with Unity builds
++    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
++  endif ()
++  if (MSVC_VERSION GREATER 1500 OR MSVC_VERSION EQUAL 1500)
++    option(OGRE_BUILD_MSVC_MP "Enable build with multiple processes in Visual Studio" TRUE)
++  else()
++    set(OGRE_BUILD_MSVC_MP FALSE CACHE BOOL "Compiler option /MP requires at least Visual Studio 2008 (VS9) or newer" FORCE)
++  endif()
++  if(OGRE_BUILD_MSVC_MP)
++    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
++  endif ()
++  if(MSVC_VERSION GREATER 1400 OR MSVC_VERSION EQUAL 1400)
++    option(OGRE_BUILD_MSVC_ZM "Add /Zm256 compiler option to Visual Studio to fix PCH errors" TRUE)
++  else()
++    set(OGRE_BUILD_MSVC_ZM FALSE CACHE BOOL "Compiler option /Zm256 requires at least Visual Studio 2005 (VS8) or newer" FORCE)
++  endif()
++  if(OGRE_BUILD_MSVC_ZM)
++    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zm256")
++  endif ()
++endif ()
++if (MINGW)
++  add_definitions(-D_WIN32_WINNT=0x0500)
++  # set architecture to i686, since otherwise some versions of MinGW can't link
++  # the atomic primitives
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=i686")
++  # Fpermissive required to let some "non-standard" casting operations in the plugins pass
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
++  # disable this optimisation because it breaks release builds (reason unknown)
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-tree-slp-vectorize")
++  # Ignore some really annoying warnings which also happen in dependencies
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=cast-qual -Wno-unused-local-typedefs")
++endif ()
++
++if ((CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_CLANGXX) AND NOT MINGW)
++  # Test for GCC visibility
++  include(CheckCXXCompilerFlag)
++  check_cxx_compiler_flag(-fvisibility=hidden OGRE_GCC_VISIBILITY)
++  if (OGRE_GCC_VISIBILITY)
++    # determine gcc version
++    execute_process(COMMAND ${CMAKE_CXX_COMPILER} -dumpversion
++      OUTPUT_VARIABLE OGRE_GCC_VERSION)
++    message(STATUS "Detected g++ ${OGRE_GCC_VERSION}")
++    message(STATUS "Enabling GCC visibility flags")
++    set(OGRE_GCC_VISIBILITY_FLAGS "-DOGRE_GCC_VISIBILITY -fvisibility=hidden")
++    set(XCODE_ATTRIBUTE_GCC_SYMBOLS_PRIVATE_EXTERN "YES")
++
++    # check if we can safely add -fvisibility-inlines-hidden
++    string(TOLOWER "${CMAKE_BUILD_TYPE}" OGRE_BUILD_TYPE)
++    if (OGRE_BUILD_TYPE STREQUAL "debug" AND OGRE_GCC_VERSION VERSION_LESS "4.2")
++      message(STATUS "Skipping -fvisibility-inlines-hidden due to possible bug in g++ < 4.2")
++    else ()
++      if (APPLE AND NOT OGRE_BUILD_PLATFORM_APPLE_IOS)
++        message(STATUS "Skipping -fvisibility-inlines-hidden due to linker issues")
++        set(XCODE_ATTRIBUTE_GCC_INLINES_ARE_PRIVATE_EXTERN[arch=x86_64] "YES")
++      else()
++        set(OGRE_GCC_VISIBILITY_FLAGS "${OGRE_GCC_VISIBILITY_FLAGS} -fvisibility-inlines-hidden")
++        set(XCODE_ATTRIBUTE_GCC_INLINES_ARE_PRIVATE_EXTERN "YES")
++      endif()
++    endif ()
++  endif (OGRE_GCC_VISIBILITY)
++
++  # Fix x64 issues on Linux
++  if(OGRE_PLATFORM_X64 AND NOT APPLE)
++    add_definitions(-fPIC)
++  endif()
++endif ((CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_CLANGXX) AND NOT MINGW)
++
++# determine system endianess
++if (MSVC)
++  # This doesn't work on VS 2010
++  # MSVC only builds for intel anyway
++  set(OGRE_TEST_BIG_ENDIAN FALSE)
++else()
++  include(TestBigEndian)
++  test_big_endian(OGRE_TEST_BIG_ENDIAN)
++endif()
++
++# Add OgreMain include path
++include_directories("${OGRE_SOURCE_DIR}/OgreMain/include")
++include_directories("${OGRE_BINARY_DIR}/include")
++if (APPLE)
++  if (OGRE_BUILD_PLATFORM_APPLE_IOS)
++    include_directories("${OGRE_SOURCE_DIR}/OgreMain/include/iOS")
++
++    # Set static early for proper dependency detection
++    set(OGRE_STATIC TRUE)
++  else ()
++    include_directories("${OGRE_SOURCE_DIR}/OgreMain/include/OSX")
++  endif ()
++endif (APPLE)
++
++# Find dependencies
++include(Dependencies)
++# definitions for samples
++set(OGRE_LIBRARIES OgreMain)
++set(OGRE_Paging_LIBRARIES OgrePaging)
++set(OGRE_Terrain_LIBRARIES OgreTerrain)
++set(OGRE_Volume_LIBRARIES OgreVolume)
++set(OGRE_Plugin_PCZSceneManager_LIBRARIES Plugin_PCZSceneManager)
++set(OGRE_Plugin_OctreeZone_LIBRARIES Plugin_OctreeZone)
++
++# Specify build paths
++set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${OGRE_BINARY_DIR}/lib")
++set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${OGRE_BINARY_DIR}/lib")
++set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${OGRE_BINARY_DIR}/bin")
++if (WIN32 OR APPLE)
++  if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
++    # We don't want to install in default system location, install is really for the SDK, so call it that
++    set(CMAKE_INSTALL_PREFIX
++	  "${OGRE_BINARY_DIR}/sdk" CACHE PATH "OGRE install prefix" FORCE
++    )
++  endif (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
++endif(WIN32 OR APPLE)
++
++# Set up iOS overrides.
++if (OGRE_BUILD_PLATFORM_APPLE_IOS)
++  include_directories("${OGRE_SOURCE_DIR}/OgreMain/include/iOS")
++
++  # Set build variables
++  set(XCODE_ATTRIBUTE_SDKROOT iphoneos)
++  if(CMAKE_GENERATOR STREQUAL "Unix Makefiles")
++    execute_process(COMMAND xcodebuild -version -sdk "${XCODE_ATTRIBUTE_SDKROOT}" Path | head -n 1 OUTPUT_VARIABLE CMAKE_OSX_SYSROOT)
++    string(REGEX REPLACE "(\r?\n)+$" "" CMAKE_OSX_SYSROOT "${CMAKE_OSX_SYSROOT}")
++  else()
++    set(CMAKE_OSX_SYSROOT iphoneos)
++  endif()
++
++  set(CMAKE_EXE_LINKER_FLAGS "-framework Foundation -framework CoreGraphics -framework QuartzCore -framework UIKit")
++  set(XCODE_ATTRIBUTE_GCC_UNROLL_LOOPS "YES")
++  set(XCODE_ATTRIBUTE_LLVM_VECTORIZE_LOOPS "YES")
++  set(XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "iPhone Developer")
++  set(XCODE_ATTRIBUTE_GCC_PRECOMPILE_PREFIX_HEADER "YES")
++  set(OGRE_BUILD_RENDERSYSTEM_GLES TRUE CACHE BOOL "Forcing OpenGL ES RenderSystem for iOS" FORCE)
++  set(OGRE_BUILD_RENDERSYSTEM_GLES2 TRUE CACHE BOOL "Forcing OpenGL ES 2 RenderSystem for iOS" FORCE)
++  set(OGRE_STATIC TRUE CACHE BOOL "Forcing static build for iOS" FORCE)
++  set(MACOSX_BUNDLE_GUI_IDENTIFIER "com.yourcompany.\${PRODUCT_NAME:rfc1034identifier}")
++  add_definitions(-mno-thumb)
++
++  set(CMAKE_OSX_ARCHITECTURES "$(ARCHS_STANDARD_INCLUDING_64_BIT)")
++  string (REPLACE "-msse" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
++elseif (ANDROID)
++  set(TargetPlatform "Android")
++  set(OGRE_PLATFORM OGRE_PLATFORM_ANDROID)
++  set(OGRE_CONFIG_ENABLE_VIEWPORT_ORIENTATIONMODE FALSE CACHE BOOL "Disable viewport orientation Android" FORCE)
++
++  if( NOT ANDROID_GLES_ONLY )
++   set(OGRE_CONFIG_ENABLE_GLES2_VAO_SUPPORT FALSE CACHE BOOL "Disable VAO on Android" FORCE)
++   set(OGRE_BUILD_RENDERSYSTEM_GLES2 TRUE CACHE BOOL "Forcing OpenGL ES 2 RenderSystem for Android" FORCE)
++   set(OGRE_BUILD_RENDERSYSTEM_GLES FALSE CACHE BOOL "Disable OpenGL ES 1 RenderSystem for Android" FORCE)
++  else()
++   set(OGRE_BUILD_RENDERSYSTEM_GLES2 FALSE CACHE BOOL "Disable OpenGL ES 2 RenderSystem for Android" FORCE)
++   set(OGRE_BUILD_RENDERSYSTEM_GLES TRUE CACHE BOOL "Forcing OpenGL ES 1 RenderSystem for Android" FORCE)
++   set(OGRE_BUILD_COMPONENT_RTSHADERSYSTEM FALSE CACHE BOOL "Disable RTSS component on Android ES1" FORCE)
++   set(OGRE_BUILD_COMPONENT_VOLUME FALSE CACHE BOOL "Disable volume component on Android ES1" FORCE)
++   set(OGRE_BUILD_COMPONENT_PAGING FALSE CACHE BOOL "Disable paging component on FlashCC" FORCE)
++   set(OGRE_BUILD_COMPONENT_TERRAIN FALSE CACHE BOOL "Disable terrain component on FlashCC" FORCE)
++  endif()
++
++  set(OGRE_BUILD_PLUGIN_PCZ FALSE CACHE BOOL "Disable pcz on Android" FORCE)
++  set(OGRE_BUILD_PLUGIN_BSP FALSE CACHE BOOL "Disable bsp scenemanager on Android" FORCE)
++  set(OGRE_BUILD_TESTS FALSE CACHE BOOL "Disable tests on Android" FORCE)
++  set(OGRE_BUILD_TOOLS FALSE CACHE BOOL "Disable tools on Android" FORCE)
++  set(OGRE_STATIC TRUE CACHE BOOL "Forcing static build for Android" FORCE)
++elseif (FLASHCC)
++  set(__FLASHCC__ TRUE)
++  set(OGRE_PLATFORM OGRE_PLATFORM_FLASHCC)
++  set(OGRE_BUILD_RENDERSYSTEM_STAGE3D TRUE CACHE BOOL "Enable Stage3D RenderSystem for FlashCC" FORCE)
++  set(OGRE_BUILD_RENDERSYSTEM_GLES2 FALSE CACHE BOOL "Disable OpenGL ES 2 RenderSystem for FlashCC" FORCE)
++  set(OGRE_BUILD_RENDERSYSTEM_GLES FALSE CACHE BOOL "Disable OpenGL ES 1 RenderSystem for FlashCC" FORCE)
++  set(OGRE_BUILD_COMPONENT_PAGING FALSE CACHE BOOL "Disable paging component on FlashCC" FORCE)
++  set(OGRE_BUILD_COMPONENT_TERRAIN FALSE CACHE BOOL "Disable terrain component on FlashCC" FORCE)
++  set(OGRE_BUILD_COMPONENT_VOLUME FALSE CACHE BOOL "Disable volume component on FlashCC" FORCE)
++  set(OGRE_BUILD_PLUGIN_PCZ FALSE CACHE BOOL "Disable pcz on FlashCC" FORCE)
++  set(OGRE_BUILD_PLUGIN_BSP FALSE CACHE BOOL "Disable bsp scenemanager on FlashCC" FORCE)
++  set(OGRE_BUILD_TESTS FALSE CACHE BOOL "Disable tests on FlashCC" FORCE)
++  set(OGRE_BUILD_TOOLS FALSE CACHE BOOL "Disable tools on FlashCC" FORCE)
++  set(OGRE_STATIC TRUE CACHE BOOL "Forcing static build for FlashCC" FORCE)
++elseif (APPLE AND NOT OGRE_BUILD_PLATFORM_APPLE_IOS)
++
++  set(XCODE_ATTRIBUTE_SDKROOT macosx)
++  if(CMAKE_GENERATOR STREQUAL "Unix Makefiles")
++    execute_process(COMMAND xcodebuild -version -sdk "${XCODE_ATTRIBUTE_SDKROOT}" Path | head -n 1 OUTPUT_VARIABLE CMAKE_OSX_SYSROOT)
++    string(REGEX REPLACE "(\r?\n)+$" "" CMAKE_OSX_SYSROOT "${CMAKE_OSX_SYSROOT}")
++  else()
++    set(CMAKE_OSX_SYSROOT macosx)
++  endif()
++
++  if (NOT CMAKE_OSX_ARCHITECTURES)
++    if(OGRE_BUILD_RENDERSYSTEM_GL3PLUS)
++      if(CMAKE_GENERATOR STREQUAL "Unix Makefiles")
++        set(CMAKE_OSX_ARCHITECTURES "${ARCHS_STANDARD_64_BIT}")
++      else()
++        set(CMAKE_OSX_ARCHITECTURES "$(ARCHS_STANDARD_64_BIT)")
++      endif()
++    else()
++      if(CMAKE_GENERATOR STREQUAL "Unix Makefiles")
++        set(CMAKE_OSX_ARCHITECTURES "${ARCHS_STANDARD_32_64_BIT}")
++      else()
++        set(CMAKE_OSX_ARCHITECTURES "$(ARCHS_STANDARD_32_64_BIT)")
++      endif()
++    endif()
++  endif()
++
++  # 10.7 is the minimum for libc++ support
++  set(CMAKE_OSX_DEPLOYMENT_TARGET 10.7)
++  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
++
++  # Make sure that the OpenGL render system is selected for non-iOS Apple builds
++  set(OGRE_BUILD_RENDERSYSTEM_GLES FALSE)
++  set(OGRE_BUILD_RENDERSYSTEM_GLES2 FALSE)
++elseif (OGRE_BUILD_PLATFORM_WINRT)
++  set(OGRE_BUILD_RENDERSYSTEM_D3D11 TRUE CACHE BOOL "Forcing Direct3D11 RenderSystem for WinRT" FORCE)
++endif ()
++
++if(OGRE_CONFIG_ENABLE_GLES3_SUPPORT)
++  set(OGRE_CONFIG_ENABLE_GLES2_VAO_SUPPORT TRUE CACHE BOOL "Forcing VAO support for OpenGL ES 3" FORCE)
++endif()
++
++# Enable the PVRTC codec if OpenGL ES is being built
++if(OGRE_BUILD_RENDERSYSTEM_GLES OR OGRE_BUILD_RENDERSYSTEM_GLES2)
++  set(OGRE_CONFIG_ENABLE_PVRTC TRUE CACHE BOOL "Forcing PVRTC codec for OpenGL ES" FORCE)
++  set(OGRE_CONFIG_ENABLE_ETC TRUE CACHE BOOL "Forcing ETC codec for OpenGL ES" FORCE)
++endif()
++
++# Enable the ETC codec if OpenGL 3+ is being built
++if(OGRE_BUILD_RENDERSYSTEM_GL3PLUS)
++  set(OGRE_CONFIG_ENABLE_ETC TRUE CACHE BOOL "Forcing ETC codec for OpenGL 3+" FORCE)
++endif()
++
++######################################################################
++# Provide user options to customise the build process
++######################################################################
++
++# Customise what to build
++cmake_dependent_option(OGRE_STATIC "Static build" FALSE "" TRUE)
++cmake_dependent_option(OGRE_BUILD_RENDERSYSTEM_D3D9 "Build Direct3D9 RenderSystem" TRUE "WIN32;DirectX9_FOUND;NOT OGRE_BUILD_PLATFORM_WINRT;NOT OGRE_BUILD_PLATFORM_WINDOWS_PHONE" FALSE)
++cmake_dependent_option(OGRE_BUILD_RENDERSYSTEM_D3D11 "Build Direct3D11 RenderSystem [EXPERIMENTAL]" TRUE "WIN32;DirectX11_FOUND  OR OGRE_BUILD_PLATFORM_WINRT OR OGRE_BUILD_PLATFORM_WINDOWS_PHONE" FALSE)
++cmake_dependent_option(OGRE_BUILD_RENDERSYSTEM_GL3PLUS "Build OpenGL 3+ RenderSystem [EXPERIMENTAL]" FALSE "OPENGL_FOUND; NOT OGRE_BUILD_RENDERSYSTEM_GLES; NOT OGRE_BUILD_RENDERSYSTEM_GLES2" FALSE)
++cmake_dependent_option(OGRE_BUILD_RENDERSYSTEM_GL "Build OpenGL RenderSystem" TRUE "OPENGL_FOUND;NOT OGRE_BUILD_PLATFORM_APPLE_IOS;NOT OGRE_BUILD_PLATFORM_WINRT;NOT OGRE_BUILD_PLATFORM_WINDOWS_PHONE" FALSE)
++cmake_dependent_option(OGRE_BUILD_RENDERSYSTEM_GLES "Build OpenGL ES 1.x RenderSystem" FALSE "OPENGLES_FOUND;NOT OGRE_BUILD_PLATFORM_WINRT;NOT OGRE_BUILD_PLATFORM_WINDOWS_PHONE" FALSE)
++cmake_dependent_option(OGRE_BUILD_RENDERSYSTEM_GLES2 "Build OpenGL ES 2.x RenderSystem" FALSE "OPENGLES2_FOUND;NOT OGRE_BUILD_PLATFORM_WINRT;NOT OGRE_BUILD_PLATFORM_WINDOWS_PHONE" FALSE)
++cmake_dependent_option(OGRE_BUILD_RENDERSYSTEM_STAGE3D "Build Stage3D RenderSystem" FALSE "FLASHCC" FALSE)
++cmake_dependent_option(OGRE_BUILD_PLATFORM_NACL "Build Ogre for Google's Native Client (NaCl)" FALSE "OPENGLES2_FOUND" FALSE)
++cmake_dependent_option(OGRE_BUILD_PLATFORM_WINRT "Build Ogre for Metro style application (WinRT)" FALSE "WIN32" FALSE)
++cmake_dependent_option(OGRE_BUILD_PLATFORM_WINDOWS_PHONE "Build Ogre for Windows Phone" FALSE "WIN32" FALSE)
++option(OGRE_BUILD_PLUGIN_BSP "Build BSP SceneManager plugin" TRUE)
++option(OGRE_BUILD_PLUGIN_OCTREE "Build Octree SceneManager plugin" TRUE)
++option(OGRE_BUILD_PLUGIN_PFX "Build ParticleFX plugin" TRUE)
++
++cmake_dependent_option(OGRE_BUILD_PLUGIN_PCZ "Build PCZ SceneManager plugin" TRUE "" FALSE)
++cmake_dependent_option(OGRE_BUILD_COMPONENT_PAGING "Build Paging component" TRUE "" FALSE)
++cmake_dependent_option(OGRE_BUILD_COMPONENT_TERRAIN "Build Terrain component" TRUE "" FALSE)
++cmake_dependent_option(OGRE_BUILD_COMPONENT_VOLUME "Build Volume component" TRUE "" FALSE)
++cmake_dependent_option(OGRE_BUILD_COMPONENT_PROPERTY "Build Property component" TRUE "Boost_FOUND" FALSE)
++cmake_dependent_option(OGRE_BUILD_PLUGIN_CG "Build Cg plugin" TRUE "Cg_FOUND;NOT OGRE_BUILD_PLATFORM_APPLE_IOS" FALSE)
++cmake_dependent_option(OGRE_BUILD_COMPONENT_OVERLAY "Build Overlay component" TRUE "FREETYPE_FOUND OR OGRE_BUILD_PLATFORM_WINRT OR OGRE_BUILD_PLATFORM_WINDOWS_PHONE" FALSE)
++option(OGRE_BUILD_COMPONENT_RTSHADERSYSTEM "Build RTShader System component" TRUE)
++cmake_dependent_option(OGRE_BUILD_RTSHADERSYSTEM_CORE_SHADERS "Build RTShader System FFP core shaders" TRUE "OGRE_BUILD_COMPONENT_RTSHADERSYSTEM" FALSE)
++cmake_dependent_option(OGRE_BUILD_RTSHADERSYSTEM_EXT_SHADERS "Build RTShader System extensions shaders" TRUE "OGRE_BUILD_COMPONENT_RTSHADERSYSTEM" FALSE)
++
++cmake_dependent_option(OGRE_BUILD_SAMPLES "Build Ogre demos" TRUE "OGRE_BUILD_COMPONENT_OVERLAY OR OGRE_BUILD_PLATFORM_WINRT OR OGRE_BUILD_PLATFORM_WINDOWS_PHONE" FALSE)
++cmake_dependent_option(OGRE_BUILD_TOOLS "Build the command-line tools" TRUE "NOT OGRE_BUILD_PLATFORM_APPLE_IOS;NOT OGRE_BUILD_PLATFORM_WINRT;NOT OGRE_BUILD_PLATFORM_WINDOWS_PHONE" FALSE)
++cmake_dependent_option(OGRE_BUILD_XSIEXPORTER "Build the Softimage exporter" FALSE "Softimage_FOUND" FALSE)
++option(OGRE_BUILD_TESTS "Build the unit tests & PlayPen" FALSE)
++option(OGRE_CONFIG_DOUBLE "Use doubles instead of floats in Ogre" FALSE)
++cmake_dependent_option(OGRE_BUILD_LIBS_AS_FRAMEWORKS "Build frameworks for libraries on OS X." TRUE "APPLE;NOT OGRE_BUILD_PLATFORM_APPLE_IOS" FALSE)
++
++if (OGRE_BUILD_PLATFORM_WINRT)
++# WinRT can only use the standard allocator
++set(OGRE_CONFIG_ALLOCATOR 1 CACHE STRING "Forcing Standard Allocator for WinRT" FORCE)
++else ()
++set(OGRE_CONFIG_ALLOCATOR 4 CACHE STRING
++"Specify the memory allocator to use. Possible values:
++  1 - Standard allocator
++  2 - nedmalloc
++  3 - User-provided allocator
++  4 - nedmalloc with pooling"
++)
++endif ()
++
++cmake_dependent_option(OGRE_CONFIG_CONTAINERS_USE_CUSTOM_ALLOCATOR "STL containers in Ogre use the custom allocator" TRUE "" FALSE)
++option(OGRE_CONFIG_STRING_USE_CUSTOM_ALLOCATOR "Ogre String uses the custom allocator" FALSE)
++option(OGRE_CONFIG_MEMTRACK_DEBUG "Enable Ogre's memory tracker in debug mode" FALSE)
++option(OGRE_CONFIG_MEMTRACK_RELEASE "Enable Ogre's memory tracker in release mode" FALSE)
++# determine threading options
++include(PrepareThreadingOptions)
++cmake_dependent_option(OGRE_CONFIG_ENABLE_FREEIMAGE "Build FreeImage codec. If you disable this option, you need to provide your own image handling codecs." TRUE "FreeImage_FOUND OR OGRE_BUILD_PLATFORM_WINRT OR OGRE_BUILD_PLATFORM_WINDOWS_PHONE" FALSE)
++option(OGRE_CONFIG_ENABLE_DDS "Build DDS codec." TRUE)
++option(OGRE_CONFIG_ENABLE_PVRTC "Build PVRTC codec." FALSE)
++option(OGRE_CONFIG_ENABLE_ETC "Build ETC codec." FALSE)
++cmake_dependent_option(OGRE_CONFIG_ENABLE_ZIP "Build ZIP archive support. If you disable this option, you cannot use ZIP archives resource locations. The samples won't work." TRUE "ZZip_FOUND OR OGRE_BUILD_PLATFORM_WINRT OR OGRE_BUILD_PLATFORM_WINDOWS_PHONE" FALSE)
++option(OGRE_CONFIG_ENABLE_VIEWPORT_ORIENTATIONMODE "Include Viewport orientation mode support." FALSE)
++cmake_dependent_option(OGRE_CONFIG_ENABLE_GLES2_CG_SUPPORT "Enable Cg support to ES 2 render system" FALSE "OGRE_BUILD_RENDERSYSTEM_GLES2" FALSE)
++cmake_dependent_option(OGRE_CONFIG_ENABLE_GLES2_GLSL_OPTIMISER "Enable GLSL optimiser use in GLES 2 render system" FALSE "OGRE_BUILD_RENDERSYSTEM_GLES2" FALSE)
++cmake_dependent_option(OGRE_CONFIG_ENABLE_GLES2_VAO_SUPPORT "Use VertexArrayObjects if possible." FALSE "OGRE_BUILD_RENDERSYSTEM_GLES2" FALSE)
++cmake_dependent_option(OGRE_CONFIG_ENABLE_GL_STATE_CACHE_SUPPORT "Enable OpenGL state cache management" FALSE "OGRE_BUILD_RENDERSYSTEM_GL OR OGRE_BUILD_RENDERSYSTEM_GLES OR OGRE_BUILD_RENDERSYSTEM_GLES2 OR OGRE_BUILD_RENDERSYSTEM_GL3PLUS" FALSE)
++cmake_dependent_option(OGRE_CONFIG_ENABLE_GLES3_SUPPORT "Enable OpenGL ES 3.x Features" FALSE "OPENGLES3_FOUND;OGRE_BUILD_RENDERSYSTEM_GLES2;NOT OGRE_BUILD_PLATFORM_WINRT;NOT OGRE_BUILD_PLATFORM_WINDOWS_PHONE" FALSE)
++cmake_dependent_option(OGRE_USE_BOOST "Use Boost extensions" TRUE "Boost_FOUND" FALSE)
++# Customise what to install
++option(OGRE_INSTALL_SAMPLES "Install Ogre demos." TRUE)
++option(OGRE_INSTALL_TOOLS "Install Ogre tools." TRUE)
++option(OGRE_INSTALL_DOCS "Install documentation." TRUE)
++option(OGRE_INSTALL_SAMPLES_SOURCE "Install samples source files." FALSE)
++cmake_dependent_option(OGRE_INSTALL_PDB "Install debug pdb files" TRUE "MSVC" FALSE)
++cmake_dependent_option(OGRE_FULL_RPATH "Build executables with the full required RPATH to run from their install location." FALSE "NOT WIN32" FALSE)
++option(OGRE_PROFILING "Enable internal profiling support." FALSE)
++cmake_dependent_option(OGRE_CONFIG_STATIC_LINK_CRT "Statically link the MS CRT dlls (msvcrt)" FALSE "MSVC" FALSE)
++set(OGRE_LIB_DIRECTORY "lib${LIB_SUFFIX}" CACHE STRING "Install path for libraries, e.g. 'lib64' on some 64-bit Linux distros.")
++if (WIN32)
++	option(OGRE_INSTALL_VSPROPS "Install Visual Studio Property Page." FALSE)
++	if (OGRE_INSTALL_VSPROPS)
++		configure_file(${OGRE_TEMPLATES_DIR}/OGRE.props.in ${OGRE_BINARY_DIR}/OGRE.props)
++		install(FILES ${OGRE_BINARY_DIR}/OGRE.props DESTINATION "${CMAKE_INSTALL_PREFIX}")
++	endif ()
++endif ()
++
++# Unity build options
++# A Unity build includes all sources files in just a few actual compilation units
++# to potentially speed up the compilation.
++option(OGRE_UNITY_BUILD "Enable unity build for Ogre." FALSE)
++set(OGRE_UNITY_FILES_PER_UNIT "50" CACHE STRING "Number of files per compilation unit in Unity build.")
++
++# hide advanced options
++mark_as_advanced(
++  OGRE_BUILD_RTSHADERSYSTEM_CORE_SHADERS
++  OGRE_BUILD_RTSHADERSYSTEM_EXT_SHADERS
++  OGRE_CONFIG_DOUBLE
++  OGRE_CONFIG_ALLOCATOR
++  OGRE_CONFIG_CONTAINERS_USE_CUSTOM_ALLOCATOR
++  OGRE_CONFIG_STRING_USE_CUSTOM_ALLOCATOR
++  OGRE_CONFIG_MEMTRACK_DEBUG
++  OGRE_CONFIG_MEMTRACK_RELEASE
++  OGRE_CONFIG_ENABLE_DDS
++  OGRE_CONFIG_ENABLE_FREEIMAGE
++  OGRE_CONFIG_ENABLE_PVRTC
++  OGRE_CONFIG_ENABLE_ETC
++  OGRE_CONFIG_ENABLE_VIEWPORT_ORIENTATIONMODE
++  OGRE_CONFIG_ENABLE_ZIP
++  OGRE_CONFIG_ENABLE_GL_STATE_CACHE_SUPPORT
++  OGRE_CONFIG_ENABLE_GLES2_CG_SUPPORT
++  OGRE_CONFIG_ENABLE_GLES2_GLSL_OPTIMISER
++  OGRE_CONFIG_ENABLE_GLES2_VAO_SUPPORT
++  OGRE_CONFIG_ENABLE_GLES3_SUPPORT
++  OGRE_USE_BOOST
++  OGRE_INSTALL_SAMPLES_SOURCE
++  OGRE_FULL_RPATH
++  OGRE_PROFILING
++  OGRE_CONFIG_STATIC_LINK_CRT
++  OGRE_LIB_DIRECTORY
++)
++
++###################################################################
++# configure global build settings based on selected build options
++###################################################################
++include(ConfigureBuild)
++
++###################################################################
++# disable (useless) compiler warnings on project level
++###################################################################
++if(MSVC)
++	add_definitions( /wd4786 /wd4503 /wd4251 /wd4275 /wd4290 /wd4661 /wd4996 /wd4127 /wd4100)
++endif()
++
++##################################################################
++# Now setup targets
++##################################################################
++
++# install resource files
++include(InstallResources)
++
++# Setup OgreMain project
++add_subdirectory(OgreMain)
++
++# Setup RenderSystems
++add_subdirectory(RenderSystems)
++
++# Setup Plugins
++add_subdirectory(PlugIns)
++
++# Setup Components
++add_subdirectory(Components)
++
++# Setup tests (before samples so that PlayPen is included in browser)
++if (OGRE_BUILD_TESTS)
++  # enable CTest
++  ENABLE_TESTING()
++  INCLUDE(CTest)
++  add_subdirectory(Tests)
++endif ()
++
++# Setup samples
++if (OGRE_BUILD_SAMPLES)
++  add_subdirectory(Samples)
++endif()
++
++# Add android JNI binding
++if(ANDROID)
++  include(toolchain/AndroidJNI)
++endif()
++
++# Setup command-line tools
++if (OGRE_BUILD_TOOLS)
++  add_subdirectory(Tools)
++endif ()
++
++# Setup XSIExporter
++if (OGRE_BUILD_XSIEXPORTER)
++  add_subdirectory(Tools/XSIExport)
++endif ()
++
++# Install documentation
++add_subdirectory(Docs)
++
++# Install media files
++if (OGRE_INSTALL_SAMPLES OR OGRE_INSTALL_SAMPLES_SOURCE)
++  add_subdirectory(Samples/Media)
++endif ()
++
++# Install CMake modules
++add_subdirectory(CMake)
++
++# Provide CPack packaging target
++include(Packaging)
++
++
++# Show feature summary
++include(FeatureSummary)
++
+diff --git a/OgreMain/CMakeLists.txt b/OgreMain/CMakeLists.txt
+index 34960fd..5aa30a5 100644
+--- a/OgreMain/CMakeLists.txt
++++ b/OgreMain/CMakeLists.txt
+@@ -334,7 +334,9 @@ if (APPLE)
+   endif ()
+ 
+   # Framework is called 'Ogre'
+-  set_target_properties(OgreMain PROPERTIES	OUTPUT_NAME Ogre)
++  if (OGRE_BUILD_LIBS_AS_FRAMEWORKS)
++    set_target_properties(OgreMain PROPERTIES	OUTPUT_NAME Ogre)
++  endif ()
+ endif ()
+ target_link_libraries(OgreMain ${LIBRARIES})
+ if (MINGW)
+diff --git a/OgreMain/src/OgreOptimisedUtil.cpp b/OgreMain/src/OgreOptimisedUtil.cpp
+index e7b4cea..5377fa1 100644
+--- a/OgreMain/src/OgreOptimisedUtil.cpp
++++ b/OgreMain/src/OgreOptimisedUtil.cpp
+@@ -31,6 +31,11 @@ THE SOFTWARE.
+ 
+ #include "OgrePlatformInformation.h"
+ 
++#if defined(__aarch64__) && defined (__MACH__)
++#undef __OGRE_HAVE_SSE
++#undef __INTEL_COMPILER
++#endif
++
+ //#define __DO_PROFILE__
+ #ifdef __DO_PROFILE__
+ #include "OgreRoot.h"
+diff --git a/OgreMain/src/OgreOptimisedUtilSSE.cpp b/OgreMain/src/OgreOptimisedUtilSSE.cpp
+index 34cd5df..4367a5d 100644
+--- a/OgreMain/src/OgreOptimisedUtilSSE.cpp
++++ b/OgreMain/src/OgreOptimisedUtilSSE.cpp
+@@ -30,6 +30,11 @@ THE SOFTWARE.
+ #include "OgreOptimisedUtil.h"
+ #include "OgrePlatformInformation.h"
+ 
++#if defined(__aarch64__) && defined (__MACH__)
++#undef __OGRE_HAVE_SSE
++#undef __INTEL_COMPILER
++#endif
++
+ #if __OGRE_HAVE_SSE
+ 
+ #include "OgreMatrix4.h"
+diff --git a/OgreMain/src/OgrePlatformInformation.cpp b/OgreMain/src/OgrePlatformInformation.cpp
+index aa26d75..592f2ce 100644
+--- a/OgreMain/src/OgrePlatformInformation.cpp
++++ b/OgreMain/src/OgrePlatformInformation.cpp
+@@ -177,7 +177,7 @@ namespace Ogre {
+             // Return values in eax, no return statement requirement here for VC.
+         }
+ 	#endif
+-#elif (OGRE_COMPILER == OGRE_COMPILER_GNUC || OGRE_COMPILER == OGRE_COMPILER_CLANG) && OGRE_PLATFORM != OGRE_PLATFORM_NACL
++#elif ((OGRE_COMPILER == OGRE_COMPILER_GNUC || OGRE_COMPILER == OGRE_COMPILER_CLANG) && OGRE_PLATFORM != OGRE_PLATFORM_NACL && !(defined(__aarch64__) && defined (__MACH__)))
+         #if OGRE_ARCH_TYPE == OGRE_ARCHITECTURE_64
+         __asm__
+         (
+diff --git a/OgreMain/src/OgreSIMDHelper.h b/OgreMain/src/OgreSIMDHelper.h
+index 8a30294..660dfcd 100644
+--- a/OgreMain/src/OgreSIMDHelper.h
++++ b/OgreMain/src/OgreSIMDHelper.h
+@@ -31,6 +31,11 @@ THE SOFTWARE.
+ #include "OgrePrerequisites.h"
+ #include "OgrePlatformInformation.h"
+ 
++#if defined(__aarch64__) && defined (__MACH__)
++#undef __OGRE_HAVE_SSE
++#undef __INTEL_COMPILER
++#endif
++
+ // Stack-alignment hackery.
+ //
+ // If macro __OGRE_SIMD_ALIGN_STACK defined, means there requests
+@@ -68,7 +73,7 @@ THE SOFTWARE.
+ // NOTE: Should be sync with __OGRE_HAVE_SSE macro.
+ //
+ 
+-#if OGRE_DOUBLE_PRECISION == 0 && OGRE_CPU == OGRE_CPU_X86
++#if OGRE_DOUBLE_PRECISION == 0 && OGRE_CPU == OGRE_CPU_X86 && !(defined(__aarch64__) && defined (__MACH__))
+ 
+ // GCC version 4.0 upwards should be reliable for official SSE now,
+ // so no longer define SSE macros ourselves
+diff --git a/RenderSystems/GL/CMakeLists.txt b/RenderSystems/GL/CMakeLists.txt
+index d1afd2b..0754ae0 100644
+--- a/RenderSystems/GL/CMakeLists.txt
++++ b/RenderSystems/GL/CMakeLists.txt
+@@ -96,7 +96,7 @@ endif()
+ #Note that in the next row SOURCE_FILES are added last. This is to prevent compilation problems of unity build found on Windows Visual Studio. 
+ #In this situation any file added after the "glew.cpp" file, which belongs to the SOURCE_FILES package, does not compile
+ ogre_add_library(RenderSystem_GL ${OGRE_LIB_TYPE} ${HEADER_FILES} ${GLSL_SOURCE} ${ATIFS_SOURCE} ${NVPARSE_SOURCE} ${PLATFORM_HEADERS} ${PLATFORM_SOURCES} ${SOURCE_FILES})
+-target_link_libraries(RenderSystem_GL OgreMain ${OPENGL_LIBRARIES} ${PLATFORM_LIBS})
++target_link_libraries(RenderSystem_GL OgreMain ${OPENGL_LIBRARIES} ${AGL_LIBRARY_FWK} ${PLATFORM_LIBS})
+ 
+ if (NOT OGRE_STATIC)
+   set_target_properties(RenderSystem_GL PROPERTIES
+diff --git a/RenderSystems/GL/src/OSX/OgreOSXCocoaWindow.mm b/RenderSystems/GL/src/OSX/OgreOSXCocoaWindow.mm
+index 71f8f90..1d262f7 100644
+--- a/RenderSystems/GL/src/OSX/OgreOSXCocoaWindow.mm
++++ b/RenderSystems/GL/src/OSX/OgreOSXCocoaWindow.mm
+@@ -246,8 +246,8 @@ namespace Ogre {
+         mActive = true;
+         mClosed = false;
+         mName = [windowTitle cStringUsingEncoding:NSUTF8StringEncoding];
+-        mWidth = width;
+-        mHeight = height;
++        mWidth = width * mContentScalingFactor;
++        mHeight = height * mContentScalingFactor;
+         mColourDepth = depth;
+         mFSAA = fsaa_samples;
+ 
+@@ -275,13 +275,13 @@ namespace Ogre {
+                 OgreView *view = (OgreView*)StringConverter::parseUnsignedLong(opt->second);
+                 [view setOgreWindow:this];
+                 mView = view;
+-            
+-                NSRect b = [mView bounds];
+-                mWidth = (int)b.size.width;
+-                mHeight = (int)b.size.height;
+             }
++                NSRect b = [mView bounds];
++            mWidth = (int)b.size.width * mContentScalingFactor;
++            mHeight = (int)b.size.height * mContentScalingFactor;
+ 
+             mWindow = [mView window];
++            [mWindow retain];
+             mIsExternal = true;
+ 
+             // Add our window to the window event listener class
+@@ -290,8 +290,6 @@ namespace Ogre {
+ 
+         // Create register the context with the rendersystem and associate it with this window
+         mContext = OGRE_NEW OSXCocoaContext(mGLContext, mGLPixelFormat);
+-        mContext->mBackingWidth = mWidth * mContentScalingFactor;
+-        mContext->mBackingHeight = mHeight * mContentScalingFactor;
+ 
+ 		// Create the window delegate instance to handle window resizing and other window events
+         mWindowDelegate = [[OSXCocoaWindowDelegate alloc] initWithNSWindow:mWindow ogreWindow:this];
+@@ -328,30 +326,21 @@ namespace Ogre {
+         [pool drain];
+ 
+         StringStream ss;
++        ss  << "[Cocoa Window with content scaling fix] \n";
+         ss  << "Cocoa: Window created " << mWidth << " x " << mHeight
+-        << " with backing store size " << mContext->mBackingWidth << " x " << mContext->mBackingHeight
++        << " with backing store size " << mWidth << " x " << mHeight
+         << " using content scaling factor " << std::fixed << std::setprecision(1) << mContentScalingFactor;
+         LogManager::getSingleton().logMessage(ss.str());
+     }
+ 
+     unsigned int OSXCocoaWindow::getWidth() const
+     {
+-        NSRect winFrame;
+-        if(mContentScalingSupported && mContentScalingFactor > 1.0)
+-            winFrame = [mWindow convertRectToBacking:[mWindow contentRectForFrameRect:[mView frame]]];
+-        else
+-            winFrame = [mView frame];
+-        return (unsigned int) winFrame.size.width;
++      return mWidth;
+     }
+ 
+     unsigned int OSXCocoaWindow::getHeight() const
+     {
+-        NSRect winFrame;
+-        if(mContentScalingSupported && mContentScalingFactor > 1.0)
+-            winFrame = [mWindow convertRectToBacking:[mWindow contentRectForFrameRect:[mView frame]]];
+-        else
+-            winFrame = [mView frame];
+-        return (unsigned int) winFrame.size.height;
++      return mHeight;
+     }
+ 
+     void OSXCocoaWindow::destroy(void)
+@@ -503,13 +492,13 @@ namespace Ogre {
+         if(mIsFullScreen)
+             return;
+ 
++        mWidth = width * mContentScalingFactor;
++        mHeight = height * mContentScalingFactor;
++
+         // Check if the window size really changed
+         if(mWidth == width && mHeight == height)
+             return;
+ 
+-        mWidth = width * mContentScalingFactor;
+-        mHeight = height * mContentScalingFactor;
+-
+         if(mIsExternal)
+         {
+             NSRect viewFrame = [mView frame];
+@@ -520,6 +509,8 @@ namespace Ogre {
+ 
+             mLeft = viewFrame.origin.x;
+             mTop = windowFrame.size.height - (viewFrame.origin.y + viewFrame.size.height);
++            mLeft = mLeft * mContentScalingFactor;
++            mTop = mTop * mContentScalingFactor;
+             mWindowOrigin = NSMakePoint(mLeft, mTop);
+ 
+             GLint bufferRect[4];
+@@ -555,12 +546,22 @@ namespace Ogre {
+             bufferRect[1] = windowFrame.size.height - (viewFrame.origin.y + viewFrame.size.height); // 0 = bottom edge 
+             bufferRect[2] = viewFrame.size.width; // width of buffer rect 
+             bufferRect[3] = viewFrame.size.height; // height of buffer rect 
++
++            bufferRect[0] = bufferRect[0] * mContentScalingFactor;
++            bufferRect[1] = bufferRect[1] * mContentScalingFactor;
++            bufferRect[2] = bufferRect[2] * mContentScalingFactor;
++            bufferRect[3] = bufferRect[3] * mContentScalingFactor;
++
+             CGLContextObj ctx = (CGLContextObj)[mGLContext CGLContextObj];
+             CGLSetParameter(ctx, kCGLCPSwapRectangle, bufferRect);
+             [mGLContext update];
+ 
+             mLeft = viewFrame.origin.x; 
+             mTop = screenFrame.size.height - viewFrame.size.height;
++
++            mLeft = mLeft * mContentScalingFactor;
++            mTop = mTop * mContentScalingFactor;
++
+             mWindowOrigin = NSMakePoint(mLeft, mTop);
+         }
+         
+@@ -586,6 +587,11 @@ namespace Ogre {
+         mLeft = (int)winFrame.origin.x;
+         mTop = screenFrame.size.height - winFrame.size.height;
+ 
++        mWidth = mWidth * mContentScalingFactor;
++        mHeight = mHeight * mContentScalingFactor;
++        mLeft = mLeft * mContentScalingFactor;
++        mTop = mTop * mContentScalingFactor;
++
+         mWindowOrigin = NSMakePoint(mLeft, mTop);
+ 
+         for (ViewportList::iterator it = mViewportList.begin(); it != mViewportList.end(); ++it)
+@@ -739,7 +745,8 @@ namespace Ogre {
+                 CGLSetParameter((CGLContextObj)[mGLContext CGLContextObj], kCGLCPSurfaceBackingSize, backingStoreDimensions);
+                 CGLDisable((CGLContextObj)[mGLContext CGLContextObj], kCGLCESurfaceBackingSize);
+ 
+-                NSRect viewRect = NSMakeRect(mWindowOrigin.x, mWindowOrigin.y, mWidth, mHeight);
++                NSRect viewRect = NSMakeRect(mWindowOrigin.x, mWindowOrigin.y,
++                     mWidth / mContentScalingFactor, mHeight / mContentScalingFactor);
+                 [mWindow setFrame:viewRect display:YES];
+                 [mView setFrame:viewRect];
+                 [mWindow setStyleMask:NSResizableWindowMask|NSTitledWindowMask];
+@@ -764,6 +771,8 @@ namespace Ogre {
+ 
+     void OSXCocoaWindow::setFullscreen(bool fullScreen, unsigned int width, unsigned int height)
+     {
++        width = width * mContentScalingFactor;
++        height = height * mContentScalingFactor;
+         if (mIsFullScreen != fullScreen || width != mWidth || height != mHeight)
+         {
+             // Set the full screen flag
+diff --git a/RenderSystems/GL/src/OSX/OgreOSXCocoaWindow.mm.orig b/RenderSystems/GL/src/OSX/OgreOSXCocoaWindow.mm.orig
+new file mode 100644
+index 0000000..974d279
+--- /dev/null
++++ b/RenderSystems/GL/src/OSX/OgreOSXCocoaWindow.mm.orig
+@@ -0,0 +1,788 @@
++/*
++-----------------------------------------------------------------------------
++This source file is part of OGRE
++(Object-oriented Graphics Rendering Engine)
++For the latest info, see http://www.ogre3d.org
++
++Copyright (c) 2000-2014 Torus Knot Software Ltd
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the "Software"), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in
++all copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++THE SOFTWARE.
++-----------------------------------------------------------------------------
++*/
++
++#import "OgreOSXCocoaWindow.h"
++#import "OgreRoot.h"
++#import "OgreLogManager.h"
++#import "OgreStringConverter.h"
++#import "OgreWindowEventUtilities.h"
++#import "OgreGLPixelFormat.h"
++#import "OgreGLUtil.h"
++#import "OgreGLRenderSystem.h"
++
++#import <AppKit/NSScreen.h>
++#import <AppKit/NSOpenGLView.h>
++#import <QuartzCore/CVDisplayLink.h>
++
++@implementation OgreWindow
++
++- (BOOL)canBecomeKeyWindow
++{
++    return YES;
++}
++
++- (BOOL)acceptsFirstMouse:(NSEvent *)theEvent
++{
++    return YES;
++}
++
++- (BOOL)acceptsFirstResponder
++{
++    return YES;
++}
++
++@end
++
++namespace Ogre {
++
++    OSXCocoaWindow::OSXCocoaWindow() : mWindow(nil), mView(nil), mGLContext(nil), mGLPixelFormat(nil), mWindowOrigin(NSZeroPoint),
++        mWindowDelegate(NULL), mActive(false), mClosed(false), mHasResized(false), mIsExternal(false), mWindowTitle(""),
++        mUseNSView(false), mContentScalingFactor(1.0), mContentScalingSupported(false)
++    {
++        GLRenderSystem *rs = static_cast<GLRenderSystem*>(Root::getSingleton().getRenderSystem());
++        mContentScalingSupported = dynamic_cast<OSXGLSupport*>(rs->getGLSupportRef())->OSVersionIsAtLeast("10.7");
++    }
++
++    OSXCocoaWindow::~OSXCocoaWindow()
++    {
++		[mGLContext clearDrawable];
++
++        destroy();
++
++        if(mWindow && !mIsExternal)
++        {
++            [mWindow release];
++            mWindow = nil;
++        }
++
++        if(mWindowDelegate)
++        {
++            [mWindowDelegate release];
++            mWindowDelegate = nil;
++        }
++    }
++	
++	void OSXCocoaWindow::create(const String& name, unsigned int width, unsigned int height,
++	            bool fullScreen, const NameValuePairList *miscParams)
++    {
++		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
++		NSApplicationLoad();
++
++		/*
++        ***Key: "title" Description: The title of the window that will appear in the title bar
++         Values: string Default: RenderTarget name
++
++        ***Key: "colourDepth" Description: Colour depth of the resulting rendering window;
++         only applies if fullScreen is set. Values: 16 or 32 Default: desktop depth Notes: [W32 specific]
++
++        ***Key: "left" Description: screen x coordinate from left Values: positive integers
++         Default: 'center window on screen' Notes: Ignored in case of full screen
++
++        ***Key: "top" Description: screen y coordinate from top Values: positive integers
++         Default: 'center window on screen' Notes: Ignored in case of full screen
++
++        ***Key: "depthBuffer" [DX9 specific] Description: Use depth buffer Values: false or true Default: true
++
++        ***Key: "externalWindowHandle" [API specific] Description: External window handle, for embedding the
++         OGRE context Values: positive integer for W32 (HWND handle) poslong:posint:poslong (display*:screen:windowHandle)
++         or poslong:posint:poslong:poslong (display*:screen:windowHandle:XVisualInfo*) for GLX Default: 0 (None)
++
++        ***Key: "FSAA" Description: Full screen antialiasing factor Values: 0,2,4,6,... Default: 0
++
++        ***Key: "displayFrequency" Description: Display frequency rate, for fullscreen mode Values: 60...?
++         Default: Desktop vsync rate
++
++        ***Key: "vsync" Description: Synchronize buffer swaps to vsync Values: true, false Default: 0
++        */
++
++		BOOL hasDepthBuffer = YES;
++		int fsaa_samples = 0;
++        bool hidden = false;
++        NSString *windowTitle = [NSString stringWithCString:name.c_str() encoding:NSUTF8StringEncoding];
++		int winx = 0, winy = 0;
++		int depth = 32;
++        NameValuePairList::const_iterator opt;
++        mIsFullScreen = fullScreen;
++		
++		if(miscParams)
++		{
++			opt = miscParams->find("title");
++			if(opt != miscParams->end())
++				windowTitle = [NSString stringWithCString:opt->second.c_str() encoding:NSUTF8StringEncoding];
++				
++			opt = miscParams->find("left");
++			if(opt != miscParams->end())
++				winx = StringConverter::parseUnsignedInt(opt->second);
++				
++			opt = miscParams->find("top");
++			if(opt != miscParams->end())
++				winy = (int)NSHeight([[NSScreen mainScreen] frame]) - StringConverter::parseUnsignedInt(opt->second) - height;
++
++            opt = miscParams->find("hidden");
++            if (opt != miscParams->end())
++                hidden = StringConverter::parseBool(opt->second);
++
++			opt = miscParams->find("depthBuffer");
++			if(opt != miscParams->end())
++				hasDepthBuffer = StringConverter::parseBool(opt->second);
++				
++			opt = miscParams->find("FSAA");
++			if(opt != miscParams->end())
++				fsaa_samples = StringConverter::parseUnsignedInt(opt->second);
++			
++            opt = miscParams->find("gamma");
++			if(opt != miscParams->end())
++				mHwGamma = StringConverter::parseBool(opt->second);
++
++			opt = miscParams->find("colourDepth");
++			if(opt != miscParams->end())
++				depth = StringConverter::parseUnsignedInt(opt->second);
++
++            opt = miscParams->find("Full Screen");
++            if(opt != miscParams->end())
++                fullScreen = StringConverter::parseBool(opt->second);
++
++            opt = miscParams->find("contentScalingFactor");
++            if(opt != miscParams->end())
++                mContentScalingFactor = StringConverter::parseReal(opt->second);
++        }
++
++        if(miscParams->find("externalGLContext") == miscParams->end())
++        {
++            NSOpenGLPixelFormatAttribute attribs[30];
++            int i = 0;
++            
++            // Specify the display ID to associate the GL context with (main display for now)
++            // Useful if there is ambiguity
++            attribs[i++] = NSOpenGLPFAScreenMask;
++            attribs[i++] = (NSOpenGLPixelFormatAttribute)CGDisplayIDToOpenGLDisplayMask(CGMainDisplayID());
++
++            // Specifying "NoRecovery" gives us a context that cannot fall back to the software renderer.
++            // This makes the View-based context a compatible with the fullscreen context, enabling us to use
++            // the "shareContext" feature to share textures, display lists, and other OpenGL objects between the two.
++            attribs[i++] = NSOpenGLPFANoRecovery;
++            
++            attribs[i++] = NSOpenGLPFAAccelerated;
++            attribs[i++] = NSOpenGLPFADoubleBuffer;
++
++            attribs[i++] = NSOpenGLPFAColorSize;
++            attribs[i++] = (NSOpenGLPixelFormatAttribute) depth;
++
++            attribs[i++] = NSOpenGLPFAAlphaSize;
++            attribs[i++] = (NSOpenGLPixelFormatAttribute) 8;
++            
++            attribs[i++] = NSOpenGLPFAStencilSize;
++            attribs[i++] = (NSOpenGLPixelFormatAttribute) 8;
++
++            attribs[i++] = NSOpenGLPFADepthSize;
++            attribs[i++] = (NSOpenGLPixelFormatAttribute) (hasDepthBuffer? 16 : 0);
++            
++            if(fsaa_samples > 0)
++            {
++                attribs[i++] = NSOpenGLPFAMultisample;
++                attribs[i++] = NSOpenGLPFASampleBuffers;
++                attribs[i++] = (NSOpenGLPixelFormatAttribute) 1;
++                
++                attribs[i++] = NSOpenGLPFASamples;
++                attribs[i++] = (NSOpenGLPixelFormatAttribute) fsaa_samples;
++            }
++            
++            attribs[i++] = (NSOpenGLPixelFormatAttribute) 0;
++
++            mGLPixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes: attribs];
++        }
++
++        GLRenderSystem *rs = static_cast<GLRenderSystem*>(Root::getSingleton().getRenderSystem());
++        OSXCocoaContext *mainContext = (OSXCocoaContext*)rs->_getMainContext();
++        NSOpenGLContext *shareContext = mainContext == 0 ? nil : mainContext->getContext();
++
++        if(miscParams)
++            opt = miscParams->find("externalGLContext");
++
++        if(opt != miscParams->end())
++        {
++            NSOpenGLContext *openGLContext = (NSOpenGLContext*)StringConverter::parseUnsignedLong(opt->second);
++            mGLContext = openGLContext;
++        }
++        else
++        {
++            mGLContext = [[NSOpenGLContext alloc] initWithFormat:mGLPixelFormat shareContext:shareContext];
++        }
++
++        // Set vsync by default to save battery and reduce tearing
++        GLint swapInterval = 1;
++        [mGLContext setValues:&swapInterval forParameter:NSOpenGLCPSwapInterval];
++
++        if(miscParams)
++            opt = miscParams->find("externalWindowHandle");
++
++        // Make active
++        setHidden(hidden);
++        mActive = true;
++        mClosed = false;
++        mName = [windowTitle cStringUsingEncoding:NSUTF8StringEncoding];
++        mWidth = width;
++        mHeight = height;
++        mColourDepth = depth;
++        mFSAA = fsaa_samples;
++
++        if(!miscParams || opt == miscParams->end())
++        {
++            createNewWindow(width, height, [windowTitle cStringUsingEncoding:NSUTF8StringEncoding]);
++        }
++        else
++        {
++            NameValuePairList::const_iterator param_useNSView_pair;
++            param_useNSView_pair = miscParams->find("macAPICocoaUseNSView");
++
++            if(param_useNSView_pair != miscParams->end())
++                if(param_useNSView_pair->second == "true")
++                    mUseNSView = true;
++            // If the macAPICocoaUseNSView parameter was set, use the winhandler as pointer to an NSView
++            // Otherwise we assume the user created the interface with Interface Builder and instantiated an OgreView.
++            
++            if(mUseNSView) {
++                LogManager::getSingleton().logMessage("Mac Cocoa Window: Rendering on an external plain NSView*");
++                NSView *nsview = (NSView*)StringConverter::parseUnsignedLong(opt->second);
++                mView = nsview;
++            } else {
++                LogManager::getSingleton().logMessage("Mac Cocoa Window: Rendering on an external OgreView*");
++                OgreView *view = (OgreView*)StringConverter::parseUnsignedLong(opt->second);
++                [view setOgreWindow:this];
++                mView = view;
++            
++                NSRect b = [mView bounds];
++                mWidth = (int)b.size.width;
++                mHeight = (int)b.size.height;
++            }
++
++            mWindow = [mView window];
++            [mWindow retain];
++            mIsExternal = true;
++
++            // Add our window to the window event listener class
++            WindowEventUtilities::_addRenderWindow(this);
++        }
++
++        // Create register the context with the rendersystem and associate it with this window
++        mContext = OGRE_NEW OSXCocoaContext(mGLContext, mGLPixelFormat);
++        mContext->mBackingWidth = mWidth * mContentScalingFactor;
++        mContext->mBackingHeight = mHeight * mContentScalingFactor;
++
++		// Create the window delegate instance to handle window resizing and other window events
++        mWindowDelegate = [[OSXCocoaWindowDelegate alloc] initWithNSWindow:mWindow ogreWindow:this];
++
++        if(mContentScalingSupported && mContentScalingFactor > 1.0)
++            [mView setWantsBestResolutionOpenGLSurface:YES];
++
++        CGLLockContext((CGLContextObj)[mGLContext CGLContextObj]);
++
++        [mView setNeedsDisplay:YES];
++
++        if([mGLContext view] != mView)
++            [mGLContext setView:mView];
++        [mGLContext makeCurrentContext];
++
++#if OGRE_DEBUG_MODE && defined(MAC_OS_X_VERSION_10_7)
++        // Crash on functions that have been removed from the API
++        CGLEnable((CGLContextObj)[mGLContext CGLContextObj], kCGLCECrashOnRemovedFunctions);
++#endif
++
++        // Enable GL multithreading
++        CGLEnable((CGLContextObj)[mGLContext CGLContextObj], kCGLCEMPEngine);
++
++        // Fix garbage screen
++        glViewport(0, 0, mWidth, mHeight);
++        glClearColor(0, 0, 0, 1);
++        glClear(GL_COLOR_BUFFER_BIT);
++        
++        [mGLContext update];
++
++        [mGLContext flushBuffer];
++        CGLUnlockContext((CGLContextObj)[mGLContext CGLContextObj]);
++
++        [pool drain];
++
++        StringStream ss;
++        ss  << "Cocoa: Window created " << mWidth << " x " << mHeight
++        << " with backing store size " << mContext->mBackingWidth << " x " << mContext->mBackingHeight
++        << " using content scaling factor " << std::fixed << std::setprecision(1) << mContentScalingFactor;
++        LogManager::getSingleton().logMessage(ss.str());
++    }
++
++    unsigned int OSXCocoaWindow::getWidth() const
++    {
++        NSRect winFrame;
++        if(mContentScalingSupported && mContentScalingFactor > 1.0)
++            winFrame = [mWindow convertRectToBacking:[mWindow contentRectForFrameRect:[mView frame]]];
++        else
++            winFrame = [mView frame];
++        return (unsigned int) winFrame.size.width;
++    }
++
++    unsigned int OSXCocoaWindow::getHeight() const
++    {
++        NSRect winFrame;
++        if(mContentScalingSupported && mContentScalingFactor > 1.0)
++            winFrame = [mWindow convertRectToBacking:[mWindow contentRectForFrameRect:[mView frame]]];
++        else
++            winFrame = [mView frame];
++        return (unsigned int) winFrame.size.height;
++    }
++
++    void OSXCocoaWindow::destroy(void)
++    {
++        if(!mIsFullScreen)
++        {
++            // Unregister and destroy OGRE GLContext
++            OGRE_DELETE mContext;
++            
++            if(!mIsExternal)
++            {
++                // Remove the window from the Window listener
++                WindowEventUtilities::_removeRenderWindow(this);
++            }
++
++            if(mGLContext)
++            {
++                [mGLContext release];
++                mGLContext = nil;
++            }
++
++            if(mWindow)
++            {
++                if(!mIsExternal)
++                    [mWindow performClose:nil];
++
++                if(mGLPixelFormat)
++                {
++                    [mGLPixelFormat release];
++                    mGLPixelFormat = nil;
++                }
++
++            }
++		}
++		
++        mActive = false;
++        mClosed = true;
++    }
++
++    bool OSXCocoaWindow::isActive() const
++    {
++        return mActive;
++    }
++
++    bool OSXCocoaWindow::isClosed() const
++    {
++        return false;
++    }
++
++    void OSXCocoaWindow::setHidden(bool hidden)
++    {
++        mHidden = hidden;
++        if (!mIsExternal)
++        {
++            if (hidden)
++                [mWindow orderOut:nil];
++            else
++                [mWindow makeKeyAndOrderFront:nil];
++        }
++    }
++
++	void OSXCocoaWindow::setVSyncEnabled(bool vsync)
++	{
++        mVSync = vsync;
++        mContext->setCurrent();
++        
++        GLint vsyncInterval = mVSync ? 1 : 0;
++        [mGLContext setValues:&vsyncInterval forParameter:NSOpenGLCPSwapInterval];
++
++        mContext->endCurrent();
++        
++        if(mGLContext != [NSOpenGLContext currentContext])
++            [mGLContext makeCurrentContext];
++	}
++    
++	bool OSXCocoaWindow::isVSyncEnabled() const
++	{
++        return mVSync;
++	}
++
++    void OSXCocoaWindow::copyContentsToMemory(const PixelBox &dst, FrameBuffer buffer)
++    {
++        if ((dst.right > mWidth) ||
++            (dst.bottom > mHeight) ||
++            (dst.front != 0) || (dst.back != 1))
++        {
++            OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS,
++                        "Invalid box.",
++                        "CocoaWindow::copyContentsToMemory" );
++        }
++        
++        if (buffer == FB_AUTO)
++        {
++            buffer = mIsFullScreen? FB_FRONT : FB_BACK;
++        }
++        
++        GLenum format = GLPixelUtil::getGLOriginFormat(dst.format);
++        GLenum type = GLPixelUtil::getGLOriginDataType(dst.format);
++        
++        if ((format == GL_NONE) || (type == 0))
++        {
++            OGRE_EXCEPT(Exception::ERR_INVALIDPARAMS,
++                        "Unsupported format.",
++                        "CocoaWindow::copyContentsToMemory" );
++        }
++        
++        if(dst.getWidth() != dst.rowPitch)
++        {
++            glPixelStorei(GL_PACK_ROW_LENGTH, static_cast<GLint>(dst.rowPitch));
++        }
++        if((dst.getWidth()*Ogre::PixelUtil::getNumElemBytes(dst.format)) & 3)
++        {
++            // Standard alignment of 4 is not right
++            glPixelStorei(GL_PACK_ALIGNMENT, 1);
++        }
++        
++        glReadBuffer((buffer == FB_FRONT)? GL_FRONT : GL_BACK);
++        glReadPixels((GLint)0, (GLint)(mHeight - dst.getHeight()),
++                     (GLsizei)dst.getWidth(), (GLsizei)dst.getHeight(),
++                     format, type, dst.getTopLeftFrontPixelPtr());
++        
++        glPixelStorei(GL_PACK_ALIGNMENT, 4);
++        glPixelStorei(GL_PACK_ROW_LENGTH, 0);
++        
++        PixelUtil::bulkPixelVerticalFlip(dst);
++    }
++
++    void OSXCocoaWindow::reposition(int left, int top)
++    {
++		if(!mWindow)
++            return;
++
++        if(mIsFullScreen)
++            return;
++
++		NSRect frame = [mWindow frame];
++        NSRect screenFrame = [[NSScreen mainScreen] visibleFrame];
++		frame.origin.x = left;
++		frame.origin.y = screenFrame.size.height - frame.size.height - top;
++        mWindowOrigin = frame.origin;
++		[mWindow setFrame:frame display:YES];
++    }
++
++    void OSXCocoaWindow::resize(unsigned int width, unsigned int height)
++    {
++		if(!mWindow)
++            return;
++        
++        if(mIsFullScreen)
++            return;
++
++        // Check if the window size really changed
++        if(mWidth == width && mHeight == height)
++            return;
++
++        mWidth = width * mContentScalingFactor;
++        mHeight = height * mContentScalingFactor;
++
++        if(mIsExternal)
++        {
++            NSRect viewFrame = [mView frame];
++            viewFrame.size.width = width;
++            viewFrame.size.height = height;
++
++            NSRect windowFrame = [[mView window] frame];
++
++            mLeft = viewFrame.origin.x;
++            mTop = windowFrame.size.height - (viewFrame.origin.y + viewFrame.size.height);
++            mWindowOrigin = NSMakePoint(mLeft, mTop);
++
++            GLint bufferRect[4];
++            bufferRect[0] = mLeft;      // 0 = left edge 
++            bufferRect[1] = mTop;       // 0 = bottom edge 
++            bufferRect[2] = mWidth;     // width of buffer rect 
++            bufferRect[3] = mHeight;    // height of buffer rect 
++            CGLContextObj ctx = (CGLContextObj)[mGLContext CGLContextObj];
++            CGLSetParameter(ctx, kCGLCPSwapRectangle, bufferRect);
++        }
++        else
++        {
++            NSRect frame = [mWindow frame];
++            frame.size.width = width;
++            frame.size.height = height;
++            mWindowOrigin = frame.origin;
++            [mWindow setFrame:frame display:YES];
++        }
++		[mGLContext update];
++    }
++
++    void OSXCocoaWindow::windowResized()
++    {
++        // Ensure the context is current
++        if(!mIsFullScreen)
++        {
++            NSRect viewFrame = [mView frame];
++            NSRect windowFrame = [[mView window] frame];
++            NSRect screenFrame = [[NSScreen mainScreen] visibleFrame];
++
++            GLint bufferRect[4];
++            bufferRect[0] = viewFrame.origin.x; // 0 = left edge 
++            bufferRect[1] = windowFrame.size.height - (viewFrame.origin.y + viewFrame.size.height); // 0 = bottom edge 
++            bufferRect[2] = viewFrame.size.width; // width of buffer rect 
++            bufferRect[3] = viewFrame.size.height; // height of buffer rect 
++            CGLContextObj ctx = (CGLContextObj)[mGLContext CGLContextObj];
++            CGLSetParameter(ctx, kCGLCPSwapRectangle, bufferRect);
++            [mGLContext update];
++
++            mLeft = viewFrame.origin.x; 
++            mTop = screenFrame.size.height - viewFrame.size.height;
++            mWindowOrigin = NSMakePoint(mLeft, mTop);
++        }
++        
++        for (ViewportList::iterator it = mViewportList.begin(); it != mViewportList.end(); ++it) 
++        { 
++            (*it).second->_updateDimensions(); 
++        }
++    }
++
++    void OSXCocoaWindow::windowHasResized()
++    {
++        // Ensure the context is current
++        [mGLContext flushBuffer];
++    }
++    
++    void OSXCocoaWindow::windowMovedOrResized()
++    {
++        NSRect winFrame = [mWindow frame];
++        NSRect viewFrame = [mView frame];
++        NSRect screenFrame = [[NSScreen mainScreen] visibleFrame];
++        mWidth = (unsigned int)viewFrame.size.width;
++        mHeight = (unsigned int)viewFrame.size.height;
++        mLeft = (int)winFrame.origin.x;
++        mTop = screenFrame.size.height - winFrame.size.height;
++
++        mWindowOrigin = NSMakePoint(mLeft, mTop);
++
++        for (ViewportList::iterator it = mViewportList.begin(); it != mViewportList.end(); ++it)
++        {
++            (*it).second->_updateDimensions();
++        }
++		[mGLContext update];
++    }
++
++    void OSXCocoaWindow::swapBuffers()
++    {
++        CGLLockContext((CGLContextObj)[mGLContext CGLContextObj]);
++        [mGLContext makeCurrentContext];
++
++        if([mGLContext view] != mView)
++            [mGLContext setView:mView];
++
++        [mGLContext flushBuffer];
++        CGLUnlockContext((CGLContextObj)[mGLContext CGLContextObj]);
++    }
++	
++	//-------------------------------------------------------------------------------------------------//
++	void OSXCocoaWindow::getCustomAttribute( const String& name, void* pData )
++	{
++		if( name == "GLCONTEXT" ) 
++		{
++			*static_cast<OSXContext**>(pData) = mContext;
++			return;
++		} 
++		else if( name == "WINDOW" ) 
++		{
++			*(void**)(pData) = mWindow;
++			return;
++		} 
++		else if( name == "VIEW" ) 
++		{
++			*(void**)(pData) = mView;
++			return;
++		}
++		else if( name == "NSOPENGLCONTEXT" ) 
++		{
++			*(void**)(pData) = mGLContext;
++			return;
++		}
++		else if( name == "NSOPENGLPIXELFORMAT" ) 
++		{
++			*(void**)(pData) = mGLPixelFormat;
++			return;
++		}
++		
++	}
++
++    void OSXCocoaWindow::createNewWindow(unsigned int width, unsigned int height, String title)
++    {
++        // Get the dimensions of the display. We will use it for the window size but not context resolution
++        NSRect windowRect = NSZeroRect;
++        if(mIsFullScreen)
++        {
++            NSRect mainDisplayRect = [[NSScreen mainScreen] visibleFrame];
++            windowRect = NSMakeRect(0.0, 0.0, mainDisplayRect.size.width, mainDisplayRect.size.height);
++        }
++        else
++            windowRect = NSMakeRect(0.0, 0.0, width, height);
++
++        mWindow = [[OgreWindow alloc] initWithContentRect:windowRect
++                                              styleMask:mIsFullScreen ? NSBorderlessWindowMask : NSResizableWindowMask|NSTitledWindowMask
++                                                backing:NSBackingStoreBuffered
++                                                  defer:YES];
++        [mWindow setTitle:[NSString stringWithCString:title.c_str() encoding:NSUTF8StringEncoding]];
++        mWindowTitle = title;
++
++        mView = [[OgreView alloc] initWithGLOSXWindow:this];
++
++        _setWindowParameters();
++
++//        GLRenderSystem *rs = static_cast<GLRenderSystem*>(Root::getSingleton().getRenderSystem());
++//        rs->clearFrameBuffer(FBT_COLOUR);
++
++        // Show window
++        if(mWindow)
++            [mWindow makeKeyAndOrderFront:nil];
++
++        // Add our window to the window event listener class
++        WindowEventUtilities::_addRenderWindow(this);
++    }
++
++    void OSXCocoaWindow::createWindowFromExternal(NSView *viewRef)
++    {
++        LogManager::getSingleton().logMessage("Creating external window");
++
++        NSRect viewBounds;
++        if(mContentScalingSupported)
++            viewBounds = [mView convertRectToBacking:[mView bounds]];
++        else
++            viewBounds = [mView bounds];
++
++        mWindow = [viewRef window];
++
++        mView = viewRef;
++
++        GLint bufferRect[4];
++        bufferRect[0] = viewBounds.origin.x;      // 0 = left edge 
++        bufferRect[1] = viewBounds.origin.y;      // 0 = bottom edge 
++        bufferRect[2] = viewBounds.size.width;    // width of buffer rect 
++        bufferRect[3] = viewBounds.size.height;   // height of buffer rect 
++        CGLContextObj ctx = (CGLContextObj)[mGLContext CGLContextObj];
++        CGLSetParameter(ctx, kCGLCPSwapRectangle, bufferRect);
++
++        mIsExternal = true;
++    }
++
++    void OSXCocoaWindow::_setWindowParameters(void)
++    {
++        if(mWindow)
++        {
++            if(mIsFullScreen)
++            {
++                // Set the backing store size to the viewport dimensions
++                // This ensures that it will scale to the full screen size
++                NSRect mainDisplayRect = [[NSScreen mainScreen] frame];
++                NSRect backingRect = NSZeroRect;
++
++                if(mContentScalingSupported && mContentScalingFactor > 1.0)
++                    backingRect = [[NSScreen mainScreen] convertRectToBacking:mainDisplayRect];
++                else
++                    backingRect = mainDisplayRect;
++
++                GLint backingStoreDimensions[2] = { static_cast<GLint>(backingRect.size.width), static_cast<GLint>(backingRect.size.height) };
++                CGLSetParameter((CGLContextObj)[mGLContext CGLContextObj], kCGLCPSurfaceBackingSize, backingStoreDimensions);
++                CGLEnable((CGLContextObj)[mGLContext CGLContextObj], kCGLCESurfaceBackingSize);
++
++                NSRect windowRect = NSMakeRect(0.0, 0.0, mainDisplayRect.size.width, mainDisplayRect.size.height);
++                [mWindow setFrame:windowRect display:YES];
++                [mView setFrame:windowRect];
++
++                // Set window properties for full screen and save the origin in case the window has been moved
++                [mWindow setStyleMask:NSBorderlessWindowMask];
++                [mWindow setOpaque:YES];
++                [mWindow setHidesOnDeactivate:YES];
++                [mWindow setContentView:mView];
++                [mWindow setFrameOrigin:NSZeroPoint];
++                [mWindow setLevel:NSMainMenuWindowLevel+1];
++
++                mWindowOrigin = mWindow.frame.origin;
++                mLeft = mTop = 0;
++            }
++            else
++            {
++                // Reset and disable the backing store in windowed mode
++                GLint backingStoreDimensions[2] = { 0, 0 };
++                CGLSetParameter((CGLContextObj)[mGLContext CGLContextObj], kCGLCPSurfaceBackingSize, backingStoreDimensions);
++                CGLDisable((CGLContextObj)[mGLContext CGLContextObj], kCGLCESurfaceBackingSize);
++
++                NSRect viewRect = NSMakeRect(mWindowOrigin.x, mWindowOrigin.y, mWidth, mHeight);
++                [mWindow setFrame:viewRect display:YES];
++                [mView setFrame:viewRect];
++                [mWindow setStyleMask:NSResizableWindowMask|NSTitledWindowMask];
++                [mWindow setOpaque:YES];
++                [mWindow setHidesOnDeactivate:NO];
++                [mWindow setContentView:mView];
++                [mWindow setLevel:NSNormalWindowLevel];
++                [mWindow center];
++
++                // Set the drawable, and current context
++                // If you do this last, there is a moment before the rendering window pops-up
++                [mGLContext makeCurrentContext];
++            }
++            
++            [mGLContext update];
++            
++            // Even though OgreCocoaView doesn't accept first responder, it will get passed onto the next in the chain
++            [mWindow makeFirstResponder:mView];
++            [NSApp activateIgnoringOtherApps:YES];
++        }
++    }
++
++    void OSXCocoaWindow::setFullscreen(bool fullScreen, unsigned int width, unsigned int height)
++    {
++        if (mIsFullScreen != fullScreen || width != mWidth || height != mHeight)
++        {
++            // Set the full screen flag
++			mIsFullScreen = fullScreen;
++
++                // Create a window if we haven't already, existence check is done within the functions
++                if(!mWindow)
++                {
++                    if(mIsExternal)
++                        createWindowFromExternal(mView);
++                    else
++                        createNewWindow(width, height, mWindowTitle);
++                }
++
++            _setWindowParameters();
++
++            mWidth = width;
++            mHeight = height;
++        }
++    }
++}
